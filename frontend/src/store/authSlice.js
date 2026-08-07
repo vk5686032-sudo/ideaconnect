@@ -1,6 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Auth API returns the user with `id`; components use `_id`.
+// Normalize so both are always present.
+const normalizeUser = (user) => {
+  if (!user) return user;
+  return {
+    ...user,
+    _id: user._id || user.id,
+    id: user.id || user._id,
+  };
+};
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -10,7 +21,7 @@ const useAuthStore = create(
 
       setAuth: (user, token) => {
         localStorage.setItem('token', token);
-        set({ user, token, isAuthenticated: true });
+        set({ user: normalizeUser(user), token, isAuthenticated: true });
       },
 
       logout: () => {
@@ -20,7 +31,7 @@ const useAuthStore = create(
 
       updateUser: (userData) => {
         set((state) => ({
-          user: { ...state.user, ...userData },
+          user: normalizeUser({ ...state.user, ...userData }),
         }));
       },
     }),
@@ -31,6 +42,15 @@ const useAuthStore = create(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Normalize the user rehydrated from localStorage (old persisted sessions
+      // may only have `id`).
+      merge: (persisted, current) => {
+        const state = { ...current, ...persisted };
+        if (state.user) {
+          state.user = normalizeUser(state.user);
+        }
+        return state;
+      },
     }
   )
 );

@@ -1,10 +1,29 @@
+# Dependencies
+node_modules/
 
-  gitignore
-  node_modules/
+# Build output
+dist/
+build/
 
-  gitignore
-  node_modules/
-  dist/
-  .env
-  *.log
-  uploads/
+# Environment files (secrets — NEVER commit)
+.env
+.env.local
+.env.*.local
+
+# Keep the safe templates
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Uploads / local data
+uploads/

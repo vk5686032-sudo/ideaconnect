@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   FolderKanban, Users, Calendar, Globe, Link as LinkIcon,
-  UserPlus, Check, X, Trash2, MessageSquare, Play, Plus, Flag,
+  UserPlus, Check, X, Trash2, MessageSquare, Play, Plus, Flag, Edit2,
 } from 'lucide-react';
 import { GithubIcon } from '../../components/common/BrandIcons';
 import toast from 'react-hot-toast';
@@ -110,7 +110,7 @@ const ProjectDetail = () => {
   }
 
   const isOwner = user?._id === project.owner?._id;
-  const isMember = project.members?.some((m) => m.user?._id === user?._id);
+  const isMember = project.members?.some((m) => m.user?._id === user?._id) || isOwner;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -118,11 +118,19 @@ const ProjectDetail = () => {
         {/* Main Content */}
         <div className="lg:col-span-2">
           <div className="card mb-6">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className={`badge ${project.status === 'completed' ? 'badge-success' : project.status === 'in-progress' ? 'badge-primary' : 'badge-warning'}`}>
                 {project.status}
               </span>
               {project.visibility === 'private' && <span className="badge-warning">Private</span>}
+              {isOwner && (
+                <button
+                  onClick={() => navigate(`/projects/${project._id}/edit`)}
+                  className="ml-auto btn-outline text-sm flex items-center gap-1.5"
+                >
+                  <Edit2 className="w-4 h-4" /> Edit Project
+                </button>
+              )}
             </div>
 
             <h1 className="text-2xl md:text-3xl font-bold mb-4">{project.title}</h1>

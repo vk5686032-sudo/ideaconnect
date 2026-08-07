@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,6 +43,13 @@ const CreateProject = () => {
   });
 
   const existingProject = existingData?.data?.data;
+
+  // Pre-fill technologies when editing an existing project
+  useEffect(() => {
+    if (existingProject?.technologies?.length) {
+      setTechnologies(existingProject.technologies);
+    }
+  }, [existingProject?._id]);
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(projectSchema),
