@@ -1,10 +1,23 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
+const { getIO } = require('../config/socket');
 
 const create = async (notificationData) => {
   try {
     const notification = await Notification.create(notificationData);
     await notification.populate('sender', 'name avatar');
+
+    // Realtime push to the recipient if they're connected via Socket.io
+    try {
+      const io = getIO();
+      io.to(`user:${notification.recipient}`).emit('notification', {
+        type: notification.type,
+        notification: notification.toObject ? notification.toObject() : notification,
+      });
+    } catch (socketError) {
+      // Socket.io not initialized (e.g. during seeding) — DB record is enough
+    }
+
     return notification;
   } catch (error) {
     console.error('Notification error:', error);

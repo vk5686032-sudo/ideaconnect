@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Bell, CheckCheck } from 'lucide-react';
 import notificationApi from '../../api/notification.api';
+import useSocket from '../../hooks/useSocket';
+import { getSocket } from '../../services/socket';
 import { timeSince } from '../../utils/helpers';
 
 const NotificationsBell = () => {
@@ -10,11 +12,30 @@ const NotificationsBell = () => {
   const ref = useRef(null);
   const queryClient = useQueryClient();
 
+  // Call useSocket so its connect effect runs (declared first) and the socket
+  // is available when the listener effect below executes. MainLayout shares the
+  // same singleton connection.
+  useSocket();
+
   const { data: countData } = useQuery({
     queryKey: ['unread-notifications'],
     queryFn: () => notificationApi.getUnreadCount(),
-    refetchInterval: 30000,
+    refetchInterval: 30000, // safety fallback; realtime updates arrive via socket
   });
+
+  // Listen for realtime notification pushes and refresh badge + list instantly
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const onNotification = () => {
+      queryClient.invalidateQueries(['unread-notifications']);
+      queryClient.invalidateQueries(['notifications']);
+    };
+
+    socket.on('notification', onNotification);
+    return () => socket.off('notification', onNotification);
+  }, [queryClient]);
 
   const { data: listData } = useQuery({
     queryKey: ['notifications'],
