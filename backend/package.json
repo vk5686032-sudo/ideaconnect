@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "seed": "node src/seed.js",
+    "seed:dry": "node src/seed.js --dry",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
