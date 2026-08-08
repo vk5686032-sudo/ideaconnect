@@ -1,24 +1,52 @@
 const nodemailer = require('nodemailer');
 const config = require('../config/env');
 
-const transporter = nodemailer.createTransport({
-  host: config.smtp.host,
-  port: config.smtp.port,
-  secure: false,
-  auth: {
-    user: config.smtp.user,
-    pass: config.smtp.pass,
-  },
-});
+// If no real SMTP credentials are configured, emails are skipped in dev/test
+// (they're logged instead of sent). Set SMTP_* env vars to enable real sending.
+// Placeholder values from .env.example ("your-*", "sk-*") don't count as configured.
+const isPlaceholder = (v) =>
+  !v || /^your-|^sk-|^change-|placeholder/i.test(String(v));
 
-const sendVerificationEmail = async (email, token, name) => {
-  const verificationUrl = `${config.frontendUrl}/verify-email/${token}`;
+const smtpConfigured = Boolean(
+  config.smtp.host &&
+    !isPlaceholder(config.smtp.user) &&
+    !isPlaceholder(config.smtp.pass)
+);
 
-  const mailOptions = {
+let transporter = null;
+if (smtpConfigured) {
+  transporter = nodemailer.createTransport({
+    host: config.smtp.host,
+    port: config.smtp.port,
+    secure: false,
+    auth: {
+      user: config.smtp.user,
+      pass: config.smtp.pass,
+    },
+  });
+}
+
+const deliver = async (email, subject, html) => {
+  if (!transporter) {
+    // Demo/test mode — don't attempt a real send, just log it.
+    console.log(`[email:skipped] to=${email} subject="${subject}" (SMTP not configured)`);
+    return { skipped: true };
+  }
+  return transporter.sendMail({
     from: `"IdeaConnect" <${config.smtp.user}>`,
     to: email,
-    subject: 'Verify Your Email - IdeaConnect',
-    html: `
+    subject,
+    html,
+  });
+};
+
+const sendVerificationEmail = (email, token, name) => {
+  const verificationUrl = `${config.frontendUrl}/verify-email/${token}`;
+
+  return deliver(
+    email,
+    'Verify Your Email - IdeaConnect',
+    `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #6366f1;">Welcome to IdeaConnect, ${name}!</h2>
         <p>Thank you for registering. Please verify your email address to get started.</p>
@@ -26,20 +54,17 @@ const sendVerificationEmail = async (email, token, name) => {
         <p>Or copy this link: ${verificationUrl}</p>
         <p>This link expires in 24 hours.</p>
       </div>
-    `,
-  };
-
-  return transporter.sendMail(mailOptions);
+    `
+  );
 };
 
-const sendResetEmail = async (email, token, name) => {
+const sendResetEmail = (email, token, name) => {
   const resetUrl = `${config.frontendUrl}/reset-password/${token}`;
 
-  const mailOptions = {
-    from: `"IdeaConnect" <${config.smtp.user}>`,
-    to: email,
-    subject: 'Reset Your Password - IdeaConnect',
-    html: `
+  return deliver(
+    email,
+    'Reset Your Password - IdeaConnect',
+    `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #6366f1;">Password Reset</h2>
         <p>Hello ${name},</p>
@@ -49,27 +74,21 @@ const sendResetEmail = async (email, token, name) => {
         <p>This link expires in 10 minutes.</p>
         <p>If you didn't request this, please ignore this email.</p>
       </div>
-    `,
-  };
-
-  return transporter.sendMail(mailOptions);
+    `
+  );
 };
 
-const sendNotificationEmail = async (email, subject, message) => {
-  const mailOptions = {
-    from: `"IdeaConnect" <${config.smtp.user}>`,
-    to: email,
+const sendNotificationEmail = (email, subject, message) =>
+  deliver(
+    email,
     subject,
-    html: `
+    `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #6366f1;">${subject}</h2>
         <p>${message}</p>
       </div>
-    `,
-  };
-
-  return transporter.sendMail(mailOptions);
-};
+    `
+  );
 
 module.exports = {
   sendVerificationEmail,

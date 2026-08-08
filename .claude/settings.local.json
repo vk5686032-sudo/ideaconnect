@@ -12,7 +12,8 @@
       "Bash(curl -s -o /dev/null -w \"Backend: %{http_code}\\\\n\" http://localhost:5000/api/health)",
       "Bash(netstat -ano)",
       "Bash(awk '{print $5}')",
-      "Bash(taskkill //PID 20716 //F)"
+      "Bash(taskkill //PID 20716 //F)",
+      "Bash(taskkill //PID 7564 //F)"
     ]
   }
 }
