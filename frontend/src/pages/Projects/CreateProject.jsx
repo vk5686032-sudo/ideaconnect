@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BackButton from '../../components/common/BackButton';
 import projectApi from '../../api/project.api';
 import ideaApi from '../../api/idea.api';
 
@@ -91,6 +92,9 @@ const CreateProject = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <h1 className="text-2xl font-bold mb-8">{isEditing ? 'Edit Project' : 'Create New Project'}</h1>
 
       {idea && !isEditing && (

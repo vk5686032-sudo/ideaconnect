@@ -39,6 +39,7 @@ module.exports = (io) => {
         });
 
         await message.populate('sender', 'name avatar');
+        await message.populate('replyTo');
 
         // Update last message in chat
         await Chat.findByIdAndUpdate(chatId, { lastMessage: message._id });

@@ -1,5 +1,17 @@
 const mongoose = require('mongoose');
 
+// Mongoose 9 requires a named sub-schema for arrays of objects —
+// inline `[{ ... }]` is no longer cast correctly.
+const attachmentSchema = new mongoose.Schema(
+  {
+    public_id: String,
+    url: String,
+    name: String,
+    type: String,
+  },
+  { _id: false }
+);
+
 const messageSchema = new mongoose.Schema(
   {
     chat: {
@@ -16,14 +28,7 @@ const messageSchema = new mongoose.Schema(
       type: String,
       maxlength: [5000, 'Message cannot exceed 5000 characters'],
     },
-    attachments: [
-      {
-        public_id: String,
-        url: String,
-        name: String,
-        type: String,
-      },
-    ],
+    attachments: [attachmentSchema],
     replyTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',
@@ -59,6 +64,12 @@ const messageSchema = new mongoose.Schema(
       default: false,
     },
     deletedAt: Date,
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles, Loader2, X, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BackButton from '../../components/common/BackButton';
 import ideaApi from '../../api/idea.api';
 import aiApi from '../../api/ai.api';
 import { CATEGORIES, COMMON_SKILLS, VISIBILITY_OPTIONS } from '../../utils/constants';
@@ -113,6 +114,9 @@ const CreateIdea = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <h1 className="text-2xl font-bold mb-8">{isEditing ? 'Edit Idea' : 'Create New Idea'}</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

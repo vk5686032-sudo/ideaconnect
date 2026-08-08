@@ -7,6 +7,7 @@ import {
   Send, Trash2, Edit3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BackButton from '../../components/common/BackButton';
 import ideaApi from '../../api/idea.api';
 import aiApi from '../../api/ai.api';
 import useAuthStore from '../../store/authSlice';
@@ -116,6 +117,9 @@ const IdeaDetail = () => {
 
   return (
     <div className="max-w-7xl mx-auto">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2">

@@ -1,5 +1,59 @@
 const mongoose = require('mongoose');
 
+// Mongoose 9 requires named sub-schemas for arrays of objects —
+// inline `[{ ... }]` is no longer cast correctly.
+const ideaImageSchema = new mongoose.Schema(
+  {
+    public_id: String,
+    url: String,
+  },
+  { _id: false }
+);
+
+const ideaAttachmentSchema = new mongoose.Schema(
+  {
+    name: String,
+    url: String,
+    public_id: String,
+  },
+  { _id: false }
+);
+
+const mentorReviewSchema = new mongoose.Schema(
+  {
+    mentor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    review: String,
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
+const ideaTeamSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    role: String,
+    joinedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const ideaSchema = new mongoose.Schema(
   {
     title: {
@@ -56,19 +110,8 @@ const ideaSchema = new mongoose.Schema(
       enum: ['public', 'private', 'invite-only'],
       default: 'public',
     },
-    images: [
-      {
-        public_id: String,
-        url: String,
-      },
-    ],
-    attachments: [
-      {
-        name: String,
-        url: String,
-        public_id: String,
-      },
-    ],
+    images: [ideaImageSchema],
+    attachments: [ideaAttachmentSchema],
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -111,41 +154,12 @@ const ideaSchema = new mongoose.Schema(
       recommendedTechnologies: [String],
       analyzedAt: Date,
     },
-    mentorReviews: [
-      {
-        mentor: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-        review: String,
-        rating: {
-          type: Number,
-          min: 1,
-          max: 5,
-        },
-        createdAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
+    mentorReviews: [mentorReviewSchema],
     convertedToProject: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Project',
     },
-    team: [
-      {
-        user: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-        role: String,
-        joinedAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
+    team: [ideaTeamSchema],
   },
   {
     timestamps: true,

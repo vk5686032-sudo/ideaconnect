@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, CheckCheck } from 'lucide-react';
+import BackButton from '../../components/common/BackButton';
 import notificationApi from '../../api/notification.api';
 import { timeSince } from '../../utils/helpers';
 
@@ -47,6 +48,9 @@ const Notifications = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
         <div className="flex items-center gap-2">
           <Bell className="w-6 h-6 text-primary-600" />

@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Mail, MapPin, Calendar, Globe, Edit2, Save, X } from 'lucide-react';
+import { User, Mail, MapPin, Calendar, Globe, Edit2, Save, X, MessageSquare, Loader2 } from 'lucide-react';
 import { GithubIcon, LinkedinIcon } from '../../components/common/BrandIcons';
+import BackButton from '../../components/common/BackButton';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authSlice';
 import api from '../../api/axios';
+import chatApi from '../../api/chat.api';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -24,6 +26,7 @@ const profileSchema = z.object({
 
 const Profile = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [skillInput, setSkillInput] = useState('');
@@ -33,7 +36,7 @@ const Profile = () => {
   const targetId = id || user?._id;
   const isOwnProfile = !id || id === user?._id;
 
-  const { data: userData } = useQuery({
+  const { data: userData, isFetched } = useQuery({
     queryKey: ['user', targetId],
     queryFn: () => api.get(`/users/${targetId}`),
     enabled: !!targetId,
@@ -83,8 +86,25 @@ const Profile = () => {
     setValue('skills', currentSkills.filter((s) => s !== skill));
   };
 
+  // Start or open a direct chat with the profile user
+  const startChat = useMutation({
+    mutationFn: (userId) => chatApi.createDirect(userId),
+    onSuccess: (response) => {
+      const chat = response?.data?.data;
+      if (chat?._id) {
+        navigate(`/chat/${chat._id}`);
+      }
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to start conversation');
+    },
+  });
+
   return (
     <div className="max-w-4xl mx-auto">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <div className="card">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
           <div className="flex items-center gap-4 min-w-0">
@@ -108,12 +128,24 @@ const Profile = () => {
               </div>
             </div>
           </div>
-          {isOwnProfile && (
-            <button onClick={() => setIsEditing(!isEditing)} className="btn-outline flex items-center gap-2 justify-center sm:self-start flex-shrink-0">
-              {isEditing ? <X className="w-5 h-5" /> : <Edit2 className="w-5 h-5" />}
-              {isEditing ? 'Cancel' : 'Edit Profile'}
-            </button>
-          )}
+          <div className="flex flex-col sm:flex-row gap-2 sm:self-start flex-shrink-0">
+            {!isOwnProfile && user && isFetched && (
+              <button
+                onClick={() => startChat.mutate(profile._id)}
+                disabled={startChat.isLoading}
+                className="btn-primary flex items-center gap-2 justify-center disabled:opacity-60"
+              >
+                {startChat.isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                Message
+              </button>
+            )}
+            {isOwnProfile && (
+              <button onClick={() => setIsEditing(!isEditing)} className="btn-outline flex items-center gap-2 justify-center">
+                {isEditing ? <X className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                {isEditing ? 'Cancel' : 'Edit Profile'}
+              </button>
+            )}
+          </div>
         </div>
 
         {isEditing ? (

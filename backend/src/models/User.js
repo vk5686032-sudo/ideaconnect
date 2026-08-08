@@ -1,6 +1,34 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+// Mongoose 9 requires named sub-schemas for arrays of objects —
+// inline `[{ ... }]` is no longer cast correctly.
+const educationSchema = new mongoose.Schema(
+  {
+    institution: String,
+    degree: String,
+    field: String,
+    startYear: Number,
+    endYear: Number,
+  },
+  { _id: false }
+);
+
+const experienceSchema = new mongoose.Schema(
+  {
+    company: String,
+    position: String,
+    description: String,
+    startDate: Date,
+    endDate: Date,
+    current: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -44,28 +72,8 @@ const userSchema = new mongoose.Schema(
         trim: true,
       },
     ],
-    education: [
-      {
-        institution: String,
-        degree: String,
-        field: String,
-        startYear: Number,
-        endYear: Number,
-      },
-    ],
-    experience: [
-      {
-        company: String,
-        position: String,
-        description: String,
-        startDate: Date,
-        endDate: Date,
-        current: {
-          type: Boolean,
-          default: false,
-        },
-      },
-    ],
+    education: [educationSchema],
+    experience: [experienceSchema],
     socialLinks: {
       github: String,
       linkedin: String,

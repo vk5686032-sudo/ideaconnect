@@ -7,7 +7,12 @@
       "Bash(npm run *)",
       "Bash(npm start *)",
       "Bash(curl -s http://localhost:5000/api/health)",
-      "Bash(curl -s http://localhost:5000/api/ideas)"
+      "Bash(curl -s http://localhost:5000/api/ideas)",
+      "Bash(curl -s -o /dev/null -w \"Frontend: %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"Backend: %{http_code}\\\\n\" http://localhost:5000/api/health)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(taskkill //PID 20716 //F)"
     ]
   }
 }

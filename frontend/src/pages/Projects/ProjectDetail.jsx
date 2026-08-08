@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { GithubIcon } from '../../components/common/BrandIcons';
 import toast from 'react-hot-toast';
+import BackButton from '../../components/common/BackButton';
 import projectApi from '../../api/project.api';
 import taskApi from '../../api/task.api';
 import useAuthStore from '../../store/authSlice';
@@ -114,6 +115,9 @@ const ProjectDetail = () => {
 
   return (
     <div className="max-w-7xl mx-auto">
+      <div className="mb-4">
+        <BackButton />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2">
