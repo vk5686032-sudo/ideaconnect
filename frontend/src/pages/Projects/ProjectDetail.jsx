@@ -215,7 +215,7 @@ const ProjectDetail = () => {
                           completed: !milestone.completed,
                         })}
                         disabled={!isOwner}
-                        className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        className={`mt-0.5 w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                           milestone.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'
                         } ${isOwner ? 'cursor-pointer hover:border-primary-500' : 'cursor-default'}`}
                         title={isOwner ? (milestone.completed ? 'Mark incomplete' : 'Mark complete') : ''}
@@ -238,7 +238,7 @@ const ProjectDetail = () => {
                       {isOwner && (
                         <button
                           onClick={() => deleteMilestoneMutation.mutate(milestone._id)}
-                          className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
                           title="Delete milestone"
                         >
                           <Trash2 className="w-4 h-4" />

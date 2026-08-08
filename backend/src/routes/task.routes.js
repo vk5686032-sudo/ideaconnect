@@ -7,6 +7,7 @@ const { protect } = require('../middlewares/auth');
 router.get('/tasks/my', protect, taskController.getMyTasks);
 router.get('/projects/:projectId/tasks', protect, taskController.getProjectTasks);
 router.post('/projects/:projectId/tasks', protect, taskController.createTask);
+router.put('/tasks/reorder', protect, taskController.reorderTasks); // before /:id
 router.put('/tasks/:id', protect, taskController.updateTask);
 router.delete('/tasks/:id', protect, taskController.deleteTask);
 

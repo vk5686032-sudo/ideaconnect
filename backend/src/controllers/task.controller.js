@@ -133,6 +133,51 @@ exports.updateTask = async (req, res, next) => {
   }
 };
 
+// Reorder tasks / move between status columns (batch update)
+exports.reorderTasks = async (req, res, next) => {
+  try {
+    const { projectId, tasks } = req.body;
+    if (!projectId || !Array.isArray(tasks) || tasks.length === 0) {
+      return errorResponse(res, 400, 'projectId and a non-empty tasks array are required');
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return errorResponse(res, 404, 'Project not found');
+    }
+
+    if (!isProjectMember(project, req.user._id) && project.owner.toString() !== req.user._id.toString()) {
+      return errorResponse(res, 403, 'Not authorized');
+    }
+
+    const ops = tasks
+      .filter((t) => t && t._id)
+      .map((t) => {
+        const set = { order: typeof t.order === 'number' ? t.order : 0 };
+        if (t.status) set.status = t.status;
+        // Track completion timestamps when moved to/from 'completed'
+        if (t.status === 'completed') set.completedAt = new Date();
+        else set.completedAt = null;
+        return {
+          updateOne: {
+            filter: { _id: t._id, project: projectId },
+            update: { $set: set },
+          },
+        };
+      });
+
+    if (ops.length) {
+      await Task.bulkWrite(ops);
+    }
+
+    await recalcProjectProgress(projectId);
+
+    successResponse(res, 200, 'Tasks reordered successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Delete task
 exports.deleteTask = async (req, res, next) => {
   try {

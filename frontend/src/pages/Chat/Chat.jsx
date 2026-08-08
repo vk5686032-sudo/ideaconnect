@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   MessageSquare, Send, Paperclip, Smile, ArrowLeft, Loader2, FileText, X,
-  CornerUpLeft, SmilePlus, Pencil, Trash2,
+  CornerUpLeft, SmilePlus, Pencil, Trash2, MoreHorizontal,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
@@ -377,7 +377,11 @@ const Chat = () => {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <div className="p-4 border-b border-gray-200 flex items-center gap-3">
-            <button onClick={() => navigate('/chat')} className="md:hidden p-1">
+            <button
+              onClick={() => navigate('/chat')}
+              className="md:hidden -ml-2 p-2.5 rounded-lg active:bg-gray-100"
+              title="Back to conversations"
+            >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
@@ -519,10 +523,21 @@ const Chat = () => {
                       </div>
                     )}
 
-                    {/* Hover actions (WhatsApp-style) */}
+                    {/* Mobile "⋯" toggle — no hover on touch devices */}
+                    {!deleted && !editing && (
+                      <button
+                        onClick={() => setActionsFor(actionsFor === msg._id ? null : msg._id)}
+                        className={`lg:hidden absolute -top-3 ${own ? 'right-2' : 'left-2'} w-7 h-7 bg-white rounded-full shadow-md border border-gray-100 flex items-center justify-center text-gray-500 active:bg-gray-100`}
+                        title="Message options"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {/* Hover actions (WhatsApp-style) — also opened by the mobile ⋯ toggle */}
                     {actionsFor === msg._id && !deleted && !editing && (
                       <div
-                        className={`absolute -top-3 ${own ? 'right-2' : 'left-2'} flex items-center gap-0.5 bg-white rounded-full shadow-md border border-gray-100 px-1 py-0.5`}
+                        className={`absolute -top-3 ${own ? 'right-9 lg:right-2' : 'left-9 lg:left-2'} flex items-center gap-0.5 bg-white rounded-full shadow-md border border-gray-100 px-1 py-0.5`}
                         onMouseEnter={() => setActionsFor(msg._id)}
                       >
                         {reactionBarFor === msg._id ? (

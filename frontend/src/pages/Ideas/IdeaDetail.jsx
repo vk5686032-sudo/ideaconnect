@@ -323,7 +323,8 @@ const IdeaDetail = () => {
                       {user?._id === comment.author?._id && (
                         <button
                           onClick={() => deleteCommentMutation.mutate(comment._id)}
-                          className="ml-auto text-gray-400 hover:text-red-500"
+                          className="ml-auto -mr-2 p-2 text-gray-400 hover:text-red-500 rounded-lg active:bg-red-50"
+                          title="Delete comment"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
