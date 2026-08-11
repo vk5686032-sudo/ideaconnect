@@ -29,6 +29,10 @@ const chatSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
+    creator: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     lastMessage: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',

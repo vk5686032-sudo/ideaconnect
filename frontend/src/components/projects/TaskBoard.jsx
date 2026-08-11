@@ -21,7 +21,6 @@ const COLUMNS = [
   { key: 'in-progress', label: 'In Progress', dot: 'bg-blue-500' },
   { key: 'review', label: 'Review', dot: 'bg-purple-500' },
   { key: 'completed', label: 'Completed', dot: 'bg-green-500' },
-  { key: 'cancelled', label: 'Cancelled', dot: 'bg-red-400' },
 ];
 
 const EMPTY_FORM = {

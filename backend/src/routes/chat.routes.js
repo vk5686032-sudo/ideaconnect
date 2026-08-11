@@ -9,6 +9,7 @@ router.use(protect);
 router.post('/direct', chatController.createOrGetDirectChat);
 router.post('/group', chatController.createGroupChat);
 router.get('/', chatController.getMyChats);
+router.get('/project/:projectId', chatController.getOrCreateProjectChat);
 router.get('/:id', chatController.getChatById);
 router.get('/:id/messages', chatController.getMessages);
 router.post('/:id/messages', chatController.sendMessage);
@@ -18,6 +19,8 @@ router.post('/:id/messages/:messageId/reactions', chatController.reactToMessage)
 router.post('/:id/attachments', uploadChatFile.single('file'), chatController.sendAttachment);
 router.post('/:id/read', chatController.markAsRead);
 router.post('/:id/participants', chatController.addParticipant);
+router.delete('/:id/participants/:userId', chatController.removeParticipant);
+router.post('/:id/participants/:userId/promote', chatController.promoteToAdmin);
 router.post('/:id/leave', chatController.leaveChat);
 
 module.exports = router;

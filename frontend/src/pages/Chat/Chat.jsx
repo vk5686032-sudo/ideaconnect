@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   MessageSquare, Send, Paperclip, Smile, ArrowLeft, Loader2, FileText, X,
   CornerUpLeft, SmilePlus, Pencil, Trash2, MoreHorizontal,
+  Users, UserPlus, UserMinus, Shield, LogOut,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import chatApi from '../../api/chat.api';
+import userApi from '../../api/user.api';
 import useAuthStore from '../../store/authSlice';
 import useSocket from '../../hooks/useSocket';
 import { getSocket } from '../../services/socket';
@@ -25,7 +27,14 @@ const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 const Chat = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+
+  // "Project mode": opened from a project's "Open Chat" button. Hide the
+  // all-chats sidebar (privacy) and show a back button to the project page.
+  const fromProject = searchParams.get('from') === 'project';
+  const projectId = searchParams.get('projectId');
+  const backTo = fromProject && projectId ? `/projects/${projectId}` : '/chat';
   const { user } = useAuthStore();
   const socket = useSocket();
 
@@ -45,9 +54,17 @@ const Chat = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);   // message in delete confirmation
   const [actionsFor, setActionsFor] = useState(null);       // message id showing hover actions
 
+  // Team member management
+  const [showMembers, setShowMembers] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberAddOpen, setMemberAddOpen] = useState(false);
+  const [addSearch, setAddSearch] = useState('');
+
   const { data: chatsData } = useQuery({
     queryKey: ['chats'],
     queryFn: () => chatApi.getMy(),
+    // Project mode: skip loading the user's whole chat list (privacy)
+    enabled: !fromProject,
   });
 
   const { data: messagesData } = useQuery({
@@ -62,6 +79,20 @@ const Chat = () => {
   const messages = [...serverMessages, ...localMessages];
   const currentChat = chats.find((c) => c._id === id);
 
+  // In project mode the chat list isn't loaded, so fetch this chat directly
+  const { data: singleChatData } = useQuery({
+    queryKey: ['chat', id],
+    queryFn: () => chatApi.getById(id),
+    enabled: !!id && fromProject,
+  });
+  const activeChat = currentChat || singleChatData?.data?.data;
+
+  // Team member helpers
+  const isTeam = activeChat?.type === 'group';
+  const members = activeChat?.participants || [];
+  const isAdmin = activeChat?.admins?.some((a) => a._id === user?._id || a === user?._id) || false;
+  const isCreator = activeChat?.creator?._id === user?._id || activeChat?.creator === user?._id;
+
   // Reset local state when chat changes
   useEffect(() => {
     setLocalMessages([]);
@@ -72,6 +103,9 @@ const Chat = () => {
     setReactionBarFor(null);
     setDeleteTarget(null);
     setActionsFor(null);
+    setShowMembers(false);
+    setMemberAddOpen(false);
+    setAddSearch('');
   }, [id]);
 
   // Update a message (by id) in whichever source holds it (server cache or local state)
@@ -320,11 +354,69 @@ const Chat = () => {
     return Object.entries(counts);
   };
 
+  // ---- Team member management ----
+  const refreshChats = () => queryClient.invalidateQueries(['chats']);
+
+  const handleAddMember = async (userId) => {
+    try {
+      await chatApi.addParticipant(id, userId);
+      refreshChats();
+      setAddSearch('');
+      setMemberAddOpen(false);
+      toast.success('Member added');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add member');
+    }
+  };
+
+  const handleRemoveMember = async (userId) => {
+    try {
+      await chatApi.removeParticipant(id, userId);
+      refreshChats();
+      toast.success('Member removed');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to remove member');
+    }
+  };
+
+  const handlePromote = async (userId) => {
+    try {
+      await chatApi.promoteToAdmin(id, userId);
+      refreshChats();
+      toast.success('Member promoted to admin');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to promote member');
+    }
+  };
+
+  const handleLeave = async () => {
+    try {
+      await chatApi.leave(id);
+      toast.success('Left team');
+      navigate('/chat');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to leave team');
+    }
+  };
+
+  const filteredMembers = members.filter(
+    (m) => !memberSearch || m.name?.toLowerCase().includes(memberSearch.toLowerCase())
+  );
+
+  const { data: addUsersData } = useQuery({
+    queryKey: ['addable-users', addSearch, id],
+    queryFn: () => userApi.getAll({ limit: 20, search: addSearch }),
+    enabled: isTeam && memberAddOpen,
+  });
+  const addableUsers = (addUsersData?.data?.data || []).filter(
+    (u) => !members.some((m) => m._id === u._id)
+  );
+
   const getChatName = (chat) => {
     if (!chat) return 'Chat';
     return chat.type === 'direct'
       ? chat.participants?.filter((p) => p.name && p._id !== user?._id).map((p) => p.name).join(', ') || 'Direct Chat'
-      : chat.name || 'Group Chat';
+      : chat.name || 'Team';
   };
 
   const isOwn = (msg) => msg.sender?._id === user?._id;
@@ -333,14 +425,21 @@ const Chat = () => {
 
   return (
     <div className="h-[calc(100vh-160px)] lg:h-[calc(100vh-120px)] flex bg-white rounded-xl overflow-hidden border border-gray-200">
-      {/* Chats Sidebar */}
+      {/* Chats Sidebar — hidden entirely in project mode (privacy) */}
       <div
         className={`${
-          id ? 'hidden md:flex' : 'flex'
+          fromProject ? 'hidden' : id ? 'hidden md:flex' : 'flex'
         } w-full md:w-80 md:flex-shrink-0 border-r border-gray-200 flex-col`}
       >
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="font-semibold text-lg">Messages</h2>
+          <button
+            onClick={() => navigate('/teams')}
+            className="text-xs text-primary-600 hover:underline"
+            title="Create or manage teams"
+          >
+            New Team
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {chats.length === 0 && (
@@ -378,19 +477,37 @@ const Chat = () => {
           {/* Header */}
           <div className="p-4 border-b border-gray-200 flex items-center gap-3">
             <button
-              onClick={() => navigate('/chat')}
-              className="md:hidden -ml-2 p-2.5 rounded-lg active:bg-gray-100"
-              title="Back to conversations"
+              onClick={() => navigate(backTo)}
+              className={`${fromProject ? '' : 'md:hidden'} -ml-2 p-2.5 rounded-lg active:bg-gray-100`}
+              title={fromProject ? 'Back to project' : 'Back to messages'}
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-5 h-5 text-primary-600" />
+              {isTeam ? (
+                <Users className="w-5 h-5 text-primary-600" />
+              ) : (
+                <MessageSquare className="w-5 h-5 text-primary-600" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold truncate">{getChatName(currentChat)}</h3>
-              <p className="text-xs text-gray-500">Chat</p>
+              <h3 className="font-semibold truncate">{getChatName(activeChat)}</h3>
+              <p className="text-xs text-gray-500">
+                {isTeam
+                  ? `${members.length} member${members.length === 1 ? '' : 's'}`
+                  : 'Direct message'}
+              </p>
             </div>
+            {isTeam && (
+              <button
+                onClick={() => setShowMembers(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-primary-600 hover:bg-primary-50 border border-primary-200"
+                title="Manage team"
+              >
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Members</span>
+              </button>
+            )}
           </div>
 
           {/* Messages */}
@@ -694,6 +811,152 @@ const Chat = () => {
           <MessageSquare className="w-16 h-16 mb-4" />
           <p className="text-lg font-medium">Select a conversation</p>
           <p className="text-sm">Choose a chat to start messaging</p>
+        </div>
+      )}
+
+      {/* Team members modal */}
+      {showMembers && isTeam && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[85vh] flex flex-col shadow-lg">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary-600" />
+                Members <span className="text-sm text-gray-400 font-normal">({members.length})</span>
+              </h3>
+              <button
+                onClick={() => { setShowMembers(false); setMemberAddOpen(false); }}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-gray-200">
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Search members..."
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+              />
+              <button
+                onClick={() => { setMemberAddOpen(!memberAddOpen); setAddSearch(''); }}
+                className="mt-2 w-full flex items-center justify-center gap-2 text-sm border border-dashed border-primary-300 text-primary-600 hover:bg-primary-50 rounded-lg py-2"
+              >
+                <UserPlus className="w-4 h-4" /> Add member
+              </button>
+            </div>
+
+            {memberAddOpen && (
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                <p className="text-xs font-medium text-gray-600 mb-1">Add someone to this team</p>
+                <input
+                  type="text"
+                  className="input-field mb-2"
+                  placeholder="Search by name or skill..."
+                  value={addSearch}
+                  onChange={(e) => setAddSearch(e.target.value)}
+                />
+                <div className="max-h-40 overflow-y-auto divide-y divide-gray-100">
+                  {addableUsers.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-2 text-center">No new users found</p>
+                  ) : (
+                    addableUsers.slice(0, 10).map((u) => (
+                      <button
+                        key={u._id}
+                        onClick={() => handleAddMember(u._id)}
+                        className="w-full flex items-center gap-2 py-2 px-1 text-left hover:bg-gray-100 rounded"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                          {u.avatar?.url ? (
+                            <img src={u.avatar.url} alt="" className="w-full h-full rounded-full" />
+                          ) : (
+                            <span className="text-[10px] font-medium text-gray-600">{u.name?.[0]?.toUpperCase()}</span>
+                          )}
+                        </div>
+                        <span className="text-sm truncate">{u.name}</span>
+                        <span className="ml-auto text-xs text-primary-600">Add</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+              {filteredMembers.length === 0 ? (
+                <p className="text-sm text-gray-400 p-4 text-center">No members found</p>
+              ) : (
+                filteredMembers.map((m) => {
+                  const isMe = m._id === user?._id;
+                  const mIsAdmin = activeChat?.admins?.some((a) => a._id === m._id || a === m._id);
+                  const mIsCreator = activeChat?.creator?._id === m._id || activeChat?.creator === m._id;
+                  return (
+                    <div key={m._id} className="flex items-center gap-3 px-5 py-3">
+                      <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                        {m.avatar?.url ? (
+                          <img src={m.avatar.url} alt="" className="w-full h-full rounded-full" />
+                        ) : (
+                          <span className="text-xs font-medium text-gray-600">{m.name?.[0]?.toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {m.name} {isMe && <span className="text-gray-400 font-normal">(you)</span>}
+                        </p>
+                        <div className="flex items-center gap-1 text-[11px] text-gray-400">
+                          {mIsCreator ? (
+                            <span className="text-amber-600 font-medium">Owner</span>
+                          ) : mIsAdmin ? (
+                            <span className="flex items-center gap-0.5">
+                              <Shield className="w-3 h-3" /> Admin
+                            </span>
+                          ) : (
+                            <span>Member</span>
+                          )}
+                        </div>
+                      </div>
+                      {!isMe && isAdmin && (
+                        <div className="flex items-center gap-1">
+                          {!mIsAdmin && (
+                            <button
+                              onClick={() => handlePromote(m._id)}
+                              className="p-1.5 text-gray-400 hover:text-primary-600 rounded-lg"
+                              title="Make admin"
+                            >
+                              <Shield className="w-4 h-4" />
+                            </button>
+                          )}
+                          {!mIsCreator && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Remove ${m.name} from this team?`)) handleRemoveMember(m._id);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg"
+                              title="Remove member"
+                            >
+                              <UserMinus className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  if (window.confirm('Leave this team? You can be added back by another member.')) handleLeave();
+                }}
+                className="w-full flex items-center justify-center gap-2 text-sm text-red-600 hover:bg-red-50 rounded-lg py-2"
+              >
+                <LogOut className="w-4 h-4" /> Leave team
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

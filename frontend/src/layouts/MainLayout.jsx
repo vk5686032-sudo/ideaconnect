@@ -3,7 +3,7 @@ import {
   Lightbulb,
   LayoutDashboard,
   FolderKanban,
-  MessageSquare,
+  Users,
   Search,
   Settings,
   User,
@@ -71,7 +71,7 @@ const MainLayout = () => {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Browse Ideas', href: '/ideas', icon: Lightbulb },
     { name: 'Explore Projects', href: '/projects', icon: FolderKanban },
-    { name: 'Messages', href: '/chat', icon: MessageSquare },
+    { name: 'Chat', href: '/chat', icon: Users },
     { name: 'Search', href: '/search', icon: Search },
     { name: 'Profile', href: '/profile', icon: User },
   ];

@@ -56,11 +56,15 @@ app.use(
   })
 );
 
-// Rate limiting
+// Rate limiting — generous default (600/15min) since a single page load fires
+// several API calls and notifications poll periodically. Override via
+// RATE_LIMIT_MAX env var. Only counted for real users (skip internal calls).
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: config.rateLimit.windowMs,
+  max: config.rateLimit.max,
   message: 'Too many requests from this IP, please try again later.',
+  // Skip loopback (127.0.0.1/::1) — local dev + health checks shouldn't trip it
+  skip: (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip),
 });
 app.use('/api', limiter);
 

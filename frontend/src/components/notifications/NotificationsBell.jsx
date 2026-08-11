@@ -20,7 +20,7 @@ const NotificationsBell = () => {
   const { data: countData } = useQuery({
     queryKey: ['unread-notifications'],
     queryFn: () => notificationApi.getUnreadCount(),
-    refetchInterval: 30000, // safety fallback; realtime updates arrive via socket
+    refetchInterval: 15 * 60 * 1000, // fallback safety; socket handles real-time
   });
 
   // Listen for realtime notification pushes and refresh badge + list instantly

@@ -43,7 +43,7 @@ exports.getProjectTasks = async (req, res, next) => {
 // Create task
 exports.createTask = async (req, res, next) => {
   try {
-    const { title, description, assignedTo, priority, dueDate, labels } = req.body;
+    const { title, description, assignedTo, priority, status, dueDate, labels } = req.body;
     const project = await Project.findById(req.params.projectId);
 
     if (!project) {
@@ -57,6 +57,10 @@ exports.createTask = async (req, res, next) => {
 
     const maxOrder = await Task.countDocuments({ project: project._id });
 
+    // Respect the column the task was created in; fall back to 'todo'
+    const VALID_STATUSES = ['todo', 'in-progress', 'review', 'completed', 'cancelled'];
+    const taskStatus = VALID_STATUSES.includes(status) ? status : 'todo';
+
     const task = await Task.create({
       title,
       description,
@@ -66,7 +70,7 @@ exports.createTask = async (req, res, next) => {
       priority: priority || 'medium',
       dueDate,
       labels: labels || [],
-      status: 'todo',
+      status: taskStatus,
       order: maxOrder,
     });
 

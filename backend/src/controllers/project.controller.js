@@ -170,6 +170,112 @@ exports.deleteProject = async (req, res, next) => {
 };
 
 // Invite member
+// Add a member directly to the project team (owner only)
+exports.addMember = async (req, res, next) => {
+  try {
+    const { userId, role } = req.body;
+    const { id } = req.params;
+
+    const project = await Project.findById(id);
+    if (!project) {
+      return errorResponse(res, 404, 'Project not found');
+    }
+
+    // Only the owner can add members directly
+    if (project.owner.toString() !== req.user._id.toString()) {
+      return errorResponse(res, 403, 'Only the project owner can add members');
+    }
+
+    const isMember = project.members.some((m) => m.user.toString() === userId);
+    if (isMember) {
+      return errorResponse(res, 400, 'User is already a member');
+    }
+
+    project.members.push({
+      user: userId,
+      role: role || 'developer',
+      joinedAt: new Date(),
+      status: 'active',
+    });
+    await project.save();
+
+    await project.populate('members.user', 'name avatar');
+    await project.populate('owner', 'name avatar');
+
+    successResponse(res, 200, 'Member added successfully', project);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Remove a member from the project team (owner only; cannot remove the owner)
+exports.removeMember = async (req, res, next) => {
+  try {
+    const { id, userId } = req.params;
+
+    const project = await Project.findById(id);
+    if (!project) {
+      return errorResponse(res, 404, 'Project not found');
+    }
+    if (project.owner.toString() !== req.user._id.toString()) {
+      return errorResponse(res, 403, 'Only the project owner can remove members');
+    }
+    if (userId === project.owner.toString()) {
+      return errorResponse(res, 400, 'Cannot remove the project owner');
+    }
+
+    project.members = project.members.filter(
+      (m) => m.user.toString() !== userId
+    );
+    await project.save();
+
+    await project.populate('members.user', 'name avatar');
+    await project.populate('owner', 'name avatar');
+
+    successResponse(res, 200, 'Member removed successfully', project);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update a member's role (owner only)
+exports.updateMemberRole = async (req, res, next) => {
+  try {
+    const { id, userId } = req.params;
+    const { role } = req.body;
+
+    const VALID_ROLES = ['lead', 'developer', 'designer', 'researcher', 'mentor'];
+    if (!VALID_ROLES.includes(role)) {
+      return errorResponse(res, 400, 'Invalid role');
+    }
+
+    const project = await Project.findById(id);
+    if (!project) {
+      return errorResponse(res, 404, 'Project not found');
+    }
+    if (project.owner.toString() !== req.user._id.toString()) {
+      return errorResponse(res, 403, 'Only the project owner can change roles');
+    }
+    if (userId === project.owner.toString()) {
+      return errorResponse(res, 400, 'Cannot change the project owner role');
+    }
+
+    const member = project.members.find((m) => m.user.toString() === userId);
+    if (!member) {
+      return errorResponse(res, 400, 'User is not a member');
+    }
+    member.role = role;
+    await project.save();
+
+    await project.populate('members.user', 'name avatar');
+    await project.populate('owner', 'name avatar');
+
+    successResponse(res, 200, 'Role updated successfully', project);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.inviteMember = async (req, res, next) => {
   try {
     const { userId, role, message } = req.body;

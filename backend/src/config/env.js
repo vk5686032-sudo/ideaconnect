@@ -9,6 +9,13 @@ module.exports = {
   mongoUri: process.env.MONGODB_URI,
   jwtSecret: process.env.JWT_SECRET,
   jwtExpire: process.env.JWT_EXPIRE || '7d',
+  // API rate limit: requests per window per IP. Defaults are generous for a
+  // demo/LAN app — the frontend fires several calls per page load and polls
+  // notifications. Set RATE_LIMIT_MAX to tune for production.
+  rateLimit: {
+    max: Number(process.env.RATE_LIMIT_MAX) || 600,
+    windowMs: 15 * 60 * 1000,
+  },
   smtp: {
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,

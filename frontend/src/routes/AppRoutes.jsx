@@ -15,6 +15,7 @@ import Projects from '../pages/Projects/Projects';
 import ProjectDetail from '../pages/Projects/ProjectDetail';
 import CreateProject from '../pages/Projects/CreateProject';
 import Chat from '../pages/Chat/Chat';
+import Teams from '../pages/Teams/Teams';
 import Search from '../pages/Search/Search';
 import Notifications from '../pages/Notifications/Notifications';
 import AdminDashboard from '../pages/Admin/AdminDashboard';
@@ -94,6 +95,22 @@ const router = createBrowserRouter([
       },
       {
         path: 'chat',
+        element: (
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'teams',
+        element: (
+          <ProtectedRoute>
+            <Teams />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'teams/:id',
         element: (
           <ProtectedRoute>
             <Chat />
