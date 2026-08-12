@@ -45,6 +45,14 @@ const CreateProject = () => {
 
   const existingProject = existingData?.data?.data;
 
+  // Format deadline for date input (YYYY-MM-DD)
+  const formatDateForInput = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  };
+
   // Pre-fill technologies when editing an existing project
   useEffect(() => {
     if (existingProject?.technologies?.length) {
@@ -52,16 +60,18 @@ const CreateProject = () => {
     }
   }, [existingProject?._id]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(projectSchema),
     defaultValues: {
       title: existingProject?.title || idea?.title || '',
       description: existingProject?.description || idea?.description || '',
       repository: existingProject?.repository || '',
       demoUrl: existingProject?.demoUrl || '',
-      deadline: existingProject?.deadline || '',
+      deadline: formatDateForInput(existingProject?.deadline) || '',
     },
   });
+
+  const currentDeadline = watch('deadline');
 
   const createMutation = useMutation({
     mutationFn: (data) => (isEditing ? projectApi.update(id, data) : projectApi.create(data)),
@@ -163,8 +173,23 @@ const CreateProject = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-          <input type="date" {...register('deadline')} className="input-field" />
+          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+            Deadline
+            <span className="text-xs text-gray-400 font-normal">(optional)</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input type="date" {...register('deadline')} className="input-field flex-1" />
+            {currentDeadline && (
+              <button
+                type="button"
+                onClick={() => setValue('deadline', '', { shouldValidate: true })}
+                className="text-xs text-red-500 hover:text-red-700 font-medium"
+                title="Remove deadline"
+              >
+                Remove
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end">

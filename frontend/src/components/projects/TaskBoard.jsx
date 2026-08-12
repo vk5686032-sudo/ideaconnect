@@ -290,7 +290,7 @@ const TaskBoard = ({ project }) => {
           No tasks yet. {isMember ? 'Add the first task to get started.' : ''}
         </p>
       ) : (
-        <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 xl:grid xl:grid-cols-5 xl:gap-4 xl:overflow-visible">
+        <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 xl:grid xl:grid-cols-4 xl:gap-4 xl:overflow-visible">
           {COLUMNS.map((col) => {
             const tasks = grouped[col.key];
             return (

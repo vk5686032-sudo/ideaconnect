@@ -3,13 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   Star, MessageSquare, Eye, Bookmark, Share2, ThumbsUp,
-  Sparkles, Target, AlertTriangle, Wrench, Users, ArrowRight,
+  Wrench, Users, ArrowRight,
   Send, Trash2, Edit3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BackButton from '../../components/common/BackButton';
 import ideaApi from '../../api/idea.api';
-import aiApi from '../../api/ai.api';
 import useAuthStore from '../../store/authSlice';
 
 const IdeaDetail = () => {
@@ -18,8 +17,6 @@ const IdeaDetail = () => {
   const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuthStore();
   const [comment, setComment] = useState('');
-  const [showAI, setShowAI] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
 
   const { data: ideaData, isLoading } = useQuery({
     queryKey: ['idea', id],
@@ -33,15 +30,8 @@ const IdeaDetail = () => {
     enabled: !!id,
   });
 
-  const { data: similarData } = useQuery({
-    queryKey: ['similar-ideas', id],
-    queryFn: () => aiApi.getSimilarIdeas(id),
-    enabled: !!id,
-  });
-
   const idea = ideaData?.data?.data;
   const comments = commentsData?.data?.data || [];
-  const similarIdeas = similarData?.data?.data || [];
 
   const likeMutation = useMutation({
     mutationFn: () => ideaApi.toggleLike(id),
@@ -75,16 +65,6 @@ const IdeaDetail = () => {
       queryClient.invalidateQueries(['idea', id]);
       toast.success('Comment deleted');
     },
-  });
-
-  const analyzeMutation = useMutation({
-    mutationFn: () => aiApi.analyzeIdea(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['idea', id]);
-      setShowAI(true);
-      toast.success('AI analysis complete');
-    },
-    onError: () => toast.error('Failed to analyze idea'),
   });
 
   if (isLoading) {
@@ -207,81 +187,6 @@ const IdeaDetail = () => {
             </div>
           </div>
 
-          {/* AI Analysis */}
-          <div className="card mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary-600" /> AI Analysis
-              </h2>
-              {isOwner && (
-                <button
-                  onClick={() => analyzeMutation.mutate()}
-                  className="btn-primary"
-                  disabled={analyzeMutation.isPending}
-                >
-                  {analyzeMutation.isPending ? 'Analyzing...' : 'Analyze with AI'}
-                </button>
-              )}
-            </div>
-
-            {(idea.feasibilityScore !== null || idea.aiAnalysis?.suggestions?.length > 0) && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-1">Feasibility Score</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-white rounded-full h-2">
-                        <div className="bg-green-500 h-2 rounded-full" style={{ width: `${idea.feasibilityScore}%` }} />
-                      </div>
-                      <span className="font-bold text-green-600">{idea.feasibilityScore}</span>
-                    </div>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-1">Innovation Score</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-white rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${idea.innovationScore}%` }} />
-                      </div>
-                      <span className="font-bold text-blue-600">{idea.innovationScore}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {idea.aiAnalysis?.suggestions?.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-2 flex items-center gap-2">
-                      <Target className="w-4 h-4 text-primary-600" /> Suggestions
-                    </h3>
-                    <ul className="space-y-2">
-                      {idea.aiAnalysis.suggestions.map((suggestion, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />
-                          {suggestion}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {idea.aiAnalysis?.challenges?.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-2 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-yellow-500" /> Challenges
-                    </h3>
-                    <ul className="space-y-2">
-                      {idea.aiAnalysis.challenges.map((challenge, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-yellow-500 flex-shrink-0" />
-                          {challenge}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Comments */}
           <div className="card">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -340,21 +245,6 @@ const IdeaDetail = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Similar Ideas */}
-          {similarIdeas.length > 0 && (
-            <div className="card">
-              <h2 className="text-lg font-semibold mb-4">Similar Ideas</h2>
-              <div className="space-y-3">
-                {similarIdeas.map((similar) => (
-                  <Link key={similar._id} to={`/ideas/${similar._id}`} className="block hover:bg-gray-50 p-3 rounded-lg transition-colors">
-                    <p className="font-medium text-sm line-clamp-1">{similar.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{similar.category}</p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Team */}
           {idea.team?.length > 0 && (
             <div className="card">

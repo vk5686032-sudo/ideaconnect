@@ -69,6 +69,24 @@ const ProjectDetail = () => {
     },
   });
 
+  const [joinRequestMessage, setJoinRequestMessage] = useState('');
+  const joinMutation = useMutation({
+    mutationFn: (data) => projectApi.requestToJoin(id, data),
+    onSuccess: () => {
+      toast.success('Join request sent!');
+      setJoinRequestMessage('');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to send join request');
+    },
+  });
+
+  const requestToJoin = () => {
+    if (joinRequestMessage.trim()) {
+      joinMutation.mutate({ message: joinRequestMessage });
+    }
+  };
+
   const removeMemberMutation = useMutation({
     mutationFn: (userId) => projectApi.removeMember(id, userId),
     onSuccess: () => {
@@ -408,6 +426,31 @@ const ProjectDetail = () => {
               >
                 <MessageSquare className="w-5 h-5" />
                 {openProjectChatMutation.isLoading ? 'Opening...' : 'Open Chat'}
+              </button>
+            </div>
+          )}
+
+          {/* Request to Join */}
+          {!isMember && !isOwner && (
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-4">Request to Join</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Want to contribute to this project? Send a request to the owner.
+              </p>
+              <textarea
+                value={joinRequestMessage}
+                onChange={(e) => setJoinRequestMessage(e.target.value)}
+                placeholder="Tell the owner why you'd like to join..."
+                className="input-field mb-3"
+                rows={3}
+              />
+              <button
+                onClick={requestToJoin}
+                disabled={joinMutation.isLoading || !joinRequestMessage.trim()}
+                className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <UserPlus className="w-5 h-5" />
+                {joinMutation.isLoading ? 'Sending...' : 'Request to Join'}
               </button>
             </div>
           )}

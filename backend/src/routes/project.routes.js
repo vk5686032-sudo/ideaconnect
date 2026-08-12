@@ -15,6 +15,7 @@ router.post('/:id/invite', protect, projectController.inviteMember);
 router.post('/:id/members', protect, projectController.addMember);
 router.delete('/:id/members/:userId', protect, projectController.removeMember);
 router.put('/:id/members/:userId/role', protect, projectController.updateMemberRole);
+router.post('/:id/join-request', protect, projectController.requestToJoin);
 router.post('/invitations/:invitationId/:action', protect, projectController.handleInvitation);
 router.put('/:id/progress', protect, projectController.updateProgress);
 router.get('/my/projects', protect, projectController.getMyProjects);

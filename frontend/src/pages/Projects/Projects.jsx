@@ -80,9 +80,6 @@ const Projects = () => {
           {projects.map((project) => (
             <Link key={project._id} to={`/projects/${project._id}`} className="card-hover">
               <div className="flex items-center justify-between mb-3">
-                <span className={`badge badge-${project.status === 'completed' ? 'success' : project.status === 'in-progress' ? 'primary' : 'warning'}`}>
-                  {project.status}
-                </span>
                 <div className="flex items-center gap-1 text-sm text-gray-500">
                   <Users className="w-4 h-4" />
                   {project.members?.length || 0}

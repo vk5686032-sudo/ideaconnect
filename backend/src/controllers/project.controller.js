@@ -276,6 +276,62 @@ exports.updateMemberRole = async (req, res, next) => {
   }
 };
 
+// Request to join a project (non-members can request to join)
+exports.requestToJoin = async (req, res, next) => {
+  try {
+    const { message } = req.body;
+    const { id } = req.params;
+
+    const project = await Project.findById(id);
+    if (!project) {
+      return errorResponse(res, 404, 'Project not found');
+    }
+
+    // Can't request to join if already a member or owner
+    const isMember = project.members.some((m) => m.user.toString() === req.user._id.toString());
+    const isOwner = project.owner.toString() === req.user._id.toString();
+    if (isMember || isOwner) {
+      return errorResponse(res, 400, 'You are already part of this project');
+    }
+
+    // Check for existing pending request
+    const existingRequest = await Invitation.findOne({
+      sender: req.user._id,
+      relatedProject: id,
+      type: 'team-request',
+      status: 'pending',
+    });
+
+    if (existingRequest) {
+      return errorResponse(res, 400, 'You already have a pending request to join');
+    }
+
+    const invitation = await Invitation.create({
+      sender: req.user._id,
+      recipient: project.owner,
+      type: 'team-request',
+      relatedProject: id,
+      message: message || '',
+      role: 'developer', // default role
+    });
+
+    // Send notification to project owner
+    await notificationService.create({
+      recipient: project.owner,
+      sender: req.user._id,
+      type: 'join-request',
+      title: 'Join Request',
+      message: `${req.user.name} requested to join "${project.title}"`,
+      relatedProject: project._id,
+      actionUrl: `/projects/${project._id}`,
+    });
+
+    successResponse(res, 201, 'Join request sent successfully', invitation);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.inviteMember = async (req, res, next) => {
   try {
     const { userId, role, message } = req.body;
