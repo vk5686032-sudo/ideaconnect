@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Star, MessageSquare, Eye, Bookmark, Share2, ThumbsUp,
   Wrench, Users, ArrowRight,
-  Send, Trash2, Edit3,
+  Send, Trash2, Edit3, Check, X, Send as SendIcon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BackButton from '../../components/common/BackButton';
@@ -32,6 +32,8 @@ const IdeaDetail = () => {
 
   const idea = ideaData?.data?.data;
   const comments = commentsData?.data?.data || [];
+
+  const isOwner = idea ? user?._id === idea.author?._id : false;
 
   const likeMutation = useMutation({
     mutationFn: () => ideaApi.toggleLike(id),
@@ -67,6 +69,61 @@ const IdeaDetail = () => {
     },
   });
 
+  // Start-project request mutations
+  const requestStartProjectMutation = useMutation({
+    mutationFn: (data) => ideaApi.requestStartProject(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['idea', id]);
+      toast.success('Request sent to idea owner!');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to send request');
+    },
+  });
+
+  const getStartProjectRequestsQuery = useQuery({
+    queryKey: ['start-project-requests', id],
+    queryFn: () => ideaApi.getStartProjectRequests(id),
+    enabled: isOwner && !!id,
+  });
+  const allStartProjectRequests = getStartProjectRequestsQuery.data?.data?.data || [];
+  const pendingStartProjectRequests = allStartProjectRequests.filter(r => r.status === 'pending');
+
+  const handleStartProjectRequestMutation = useMutation({
+    mutationFn: ({ requestId, action }) => ideaApi.handleStartProjectRequest(requestId, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['idea', id]);
+      queryClient.invalidateQueries(['start-project-requests', id]);
+      queryClient.invalidateQueries(['my-start-project-request', id]);
+      toast.success(`Request ${action}d`);
+    },
+    onError: (error, { action }) => {
+      toast.error(error.response?.data?.message || `Failed to ${action} request`);
+    },
+  });
+
+  // Fetch current user's own request for this idea
+  const { data: myRequestData } = useQuery({
+    queryKey: ['my-start-project-request', id],
+    queryFn: () => ideaApi.getMyStartProjectRequest(id),
+    enabled: !isOwner && isAuthenticated && !!id,
+  });
+  const myStartProjectRequest = myRequestData?.data?.data;
+
+  const requestStartProject = (message) => {
+    requestStartProjectMutation.mutate({ message: message || '' });
+  };
+
+  const handleStartProjectRequest = (requestId, action) => {
+    if (window.confirm(action === 'approve' ? 'Approve this request? The user will be able to convert the idea to a project.' : 'Reject this request?')) {
+      handleStartProjectRequestMutation.mutate({ requestId, action });
+    }
+  };
+
+  // Check if user already has a pending request or approved request
+  const userHasPendingRequest = !isOwner && isAuthenticated && myStartProjectRequest && myStartProjectRequest.status === 'pending';
+  const userRequestApproved = !isOwner && isAuthenticated && myStartProjectRequest && myStartProjectRequest.status === 'accepted';
+
   if (isLoading) {
     return (
       <div className="text-center py-24">
@@ -86,7 +143,6 @@ const IdeaDetail = () => {
     );
   }
 
-  const isOwner = user?._id === idea.author?._id;
   const isLiked = idea.likes?.includes(user?._id);
   const isBookmarked = idea.bookmarks?.includes(user?._id);
 
@@ -269,8 +325,8 @@ const IdeaDetail = () => {
             </div>
           )}
 
-          {/* Convert to Project */}
-          {isOwner && (
+          {/* Owner: Convert to Project + Pending Requests */}
+          {isOwner && !idea.convertedToProject && (
             <div className="card bg-primary-50 border-primary-200">
               <h2 className="text-lg font-semibold mb-2">Ready to Build?</h2>
               <p className="text-sm text-gray-600 mb-4">
@@ -278,6 +334,122 @@ const IdeaDetail = () => {
               </p>
               <Link to={`/projects/new?idea=${idea._id}`} className="btn-primary w-full flex items-center justify-center gap-2">
                 <ArrowRight className="w-5 h-5" /> Convert to Project
+              </Link>
+
+              {/* Pending Requests */}
+              {pendingStartProjectRequests.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-primary-200">
+                  <h3 className="font-medium text-sm mb-3">Pending Requests ({pendingStartProjectRequests.length})</h3>
+                  <div className="space-y-3">
+                    {pendingStartProjectRequests.map((req) => (
+                      <div key={req._id} className="bg-white rounded-lg p-3 border border-gray-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          {req.sender?.avatar?.url ? (
+                            <img src={req.sender.avatar.url} alt="" className="w-6 h-6 rounded-full" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
+                              <Users className="w-3 h-3 text-primary-600" />
+                            </div>
+                          )}
+                          <span className="text-sm font-medium">{req.sender?.name}</span>
+                        </div>
+                        {req.message && <p className="text-xs text-gray-600 mb-2">{req.message}</p>}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleStartProjectRequest(req._id, 'approve')}
+                            disabled={handleStartProjectRequestMutation.isLoading}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
+                          >
+                            <Check className="w-3 h-3" /> Approve
+                          </button>
+                          <button
+                            onClick={() => handleStartProjectRequest(req._id, 'reject')}
+                            disabled={handleStartProjectRequestMutation.isLoading}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                          >
+                            <X className="w-3 h-3" /> Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Owner: Already converted */}
+          {isOwner && idea.convertedToProject && (
+            <div className="card bg-green-50 border-green-200">
+              <h2 className="text-lg font-semibold mb-2 text-green-800">Already Converted</h2>
+              <p className="text-sm text-green-700 mb-4">
+                This idea has been converted to a project.
+              </p>
+              <Link to={`/projects/${idea.convertedToProject}`} className="btn-primary w-full flex items-center justify-center gap-2">
+                <ArrowRight className="w-5 h-5" /> View Project
+              </Link>
+            </div>
+          )}
+
+          {/* Non-owner: Request to Start Project (pending or no request) */}
+          {!isOwner && isAuthenticated && !idea.convertedToProject && !userRequestApproved && (
+            <div className="card bg-amber-50 border-amber-200">
+              <h2 className="text-lg font-semibold mb-2">Start a Project</h2>
+              {userHasPendingRequest ? (
+                <>
+                  <p className="text-sm text-amber-700 mb-4">
+                    Your request is pending review by the idea owner.
+                  </p>
+                  <button
+                    disabled={true}
+                    className="btn-outline w-full flex items-center justify-center gap-2"
+                  >
+                    <SendIcon className="w-5 h-5" /> Request Sent
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Like this idea? Request to start a project from it.
+                  </p>
+                  <button
+                    onClick={() => {
+                      const message = prompt('Optional: Tell the author why you want to start this project:');
+                      if (message !== null) requestStartProject(message);
+                    }}
+                    disabled={requestStartProjectMutation.isLoading}
+                    className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <SendIcon className="w-5 h-5" />
+                    {requestStartProjectMutation.isLoading ? 'Sending...' : 'Request to Start Project'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Non-owner: Request approved - Convert to Project */}
+          {!isOwner && userRequestApproved && !idea.convertedToProject && (
+            <div className="card bg-primary-50 border-primary-200">
+              <h2 className="text-lg font-semibold mb-2">Request Approved!</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                The idea owner approved your request. You can now convert this idea to a project.
+              </p>
+              <Link to={`/projects/new?idea=${idea._id}`} className="btn-primary w-full flex items-center justify-center gap-2">
+                <ArrowRight className="w-5 h-5" /> Convert to Project
+              </Link>
+            </div>
+          )}
+
+          {/* Non-owner: Already converted */}
+          {!isOwner && idea.convertedToProject && (
+            <div className="card bg-green-50 border-green-200">
+              <h2 className="text-lg font-semibold mb-2 text-green-800">Project Available</h2>
+              <p className="text-sm text-green-700 mb-4">
+                This idea has been converted to a project. You can request to join!
+              </p>
+              <Link to={`/projects/${idea.convertedToProject}`} className="btn-primary w-full flex items-center justify-center gap-2">
+                <ArrowRight className="w-5 h-5" /> View Project
               </Link>
             </div>
           )}

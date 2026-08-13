@@ -3,9 +3,11 @@ import { Bell, CheckCheck } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import notificationApi from '../../api/notification.api';
 import { timeSince } from '../../utils/helpers';
+import { useNavigate } from 'react-router-dom';
 
 const Notifications = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -33,17 +35,25 @@ const Notifications = () => {
 
   const getNotificationText = (n) => {
     switch (n.type) {
-      case 'like':             return `liked your idea`;
-      case 'comment':          return `commented on your idea`;
-      case 'reply':            return `replied to your comment`;
-      case 'invitation':       return `sent you a project invitation`;
-      case 'join-request':     return `requested to join your project`;
-      case 'project-update':   return `updated a project`;
-      case 'task-assigned':    return `assigned you a task`;
-      case 'mentor-review':    return `reviewed your idea`;
-      case 'ai-analysis':      return `AI analysis is complete`;
-      default:                 return n.message || 'sent a notification';
+      case 'like':                   return `liked your idea`;
+      case 'comment':                return `commented on your idea`;
+      case 'reply':                  return `replied to your comment`;
+      case 'invitation':             return `sent you a project invitation`;
+      case 'join-request':           return `requested to join your project`;
+      case 'project-update':         return `updated a project`;
+      case 'task-assigned':          return `assigned you a task`;
+      case 'mentor-review':          return `reviewed your idea`;
+      case 'ai-analysis':            return `AI analysis is complete`;
+      case 'start-project-request':  return `requested to start a project from your idea`;
+      case 'start-project-approved': return `approved your request to start a project`;
+      case 'start-project-rejected': return `declined your request to start a project`;
+      default:                       return n.message || 'sent a notification';
     }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (!notification.read) markRead.mutate(notification._id);
+    if (notification.actionUrl) navigate(notification.actionUrl);
   };
 
   return (
@@ -84,9 +94,7 @@ const Notifications = () => {
           {notifications.map((n) => (
             <button
               key={n._id}
-              onClick={() => {
-                if (!n.read) markRead.mutate(n._id);
-              }}
+              onClick={() => handleNotificationClick(n)}
               className={`w-full text-left px-5 py-4 flex items-start gap-3 hover:bg-gray-50 transition-colors ${
                 !n.read ? 'bg-primary-50/30' : ''
               }`}

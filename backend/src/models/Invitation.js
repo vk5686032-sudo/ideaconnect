@@ -14,7 +14,7 @@ const invitationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['project-invite', 'team-request', 'mentor-request'],
+      enum: ['project-invite', 'team-request', 'mentor-request', 'start-project-request'],
       required: true,
     },
     status: {

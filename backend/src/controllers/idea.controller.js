@@ -1,6 +1,8 @@
 const Idea = require('../models/Idea');
 const Comment = require('../models/Comment');
 const User = require('../models/User');
+const Invitation = require('../models/Invitation');
+const Project = require('../models/Project');
 const { successResponse, errorResponse, paginatedResponse } = require('../utils/response');
 const cloudinary = require('../config/cloudinary');
 const notificationService = require('../services/notification.service');
@@ -260,6 +262,173 @@ exports.getBookmarkedIdeas = async (req, res, next) => {
       .sort({ createdAt: -1 });
 
     successResponse(res, 200, 'Bookmarked ideas retrieved successfully', ideas);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Request to start project from idea
+exports.requestStartProject = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+
+    const idea = await Idea.findById(id);
+    if (!idea) {
+      return errorResponse(res, 404, 'Idea not found');
+    }
+
+    // Check if idea is already converted to a project
+    if (idea.convertedToProject) {
+      return errorResponse(res, 400, 'This idea has already been converted to a project');
+    }
+
+    // Check if user is the author (can't request own idea)
+    if (idea.author.toString() === req.user._id.toString()) {
+      return errorResponse(res, 400, 'You cannot request to start a project from your own idea. Use "Convert to Project" directly.');
+    }
+
+    // Check for existing pending request from this user
+    const existingRequest = await Invitation.findOne({
+      sender: req.user._id,
+      relatedIdea: id,
+      type: 'start-project-request',
+      status: 'pending',
+    });
+
+    if (existingRequest) {
+      return errorResponse(res, 400, 'You already have a pending request for this idea');
+    }
+
+    // Create invitation/request
+    const invitation = await Invitation.create({
+      sender: req.user._id,
+      recipient: idea.author,
+      type: 'start-project-request',
+      relatedIdea: id,
+      message: message || '',
+    });
+
+    // Notify idea owner
+    await notificationService.create({
+      recipient: idea.author,
+      sender: req.user._id,
+      type: 'start-project-request',
+      title: 'Project Start Request',
+      message: `${req.user.name} requested to start a project from your idea "${idea.title}"`,
+      relatedIdea: idea._id,
+      relatedInvitation: invitation._id,
+      actionUrl: `/ideas/${idea._id}`,
+    });
+
+    successResponse(res, 201, 'Request sent successfully', invitation);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get pending start-project requests for an idea (owner only)
+exports.getStartProjectRequests = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const idea = await Idea.findById(id);
+    if (!idea) {
+      return errorResponse(res, 404, 'Idea not found');
+    }
+
+    // Only author can see requests
+    if (idea.author.toString() !== req.user._id.toString()) {
+      return errorResponse(res, 403, 'Only the idea author can view start-project requests');
+    }
+
+    const requests = await Invitation.find({
+      relatedIdea: id,
+      type: 'start-project-request',
+    })
+      .populate('sender', 'name avatar')
+      .sort({ createdAt: -1 });
+
+    successResponse(res, 200, 'Start project requests retrieved successfully', requests);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get the current user's own start-project request for an idea
+exports.getMyStartProjectRequest = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const request = await Invitation.findOne({
+      sender: req.user._id,
+      relatedIdea: id,
+      type: 'start-project-request',
+    }).sort({ createdAt: -1 });
+
+    successResponse(res, 200, 'Start project request retrieved successfully', request);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Handle (approve/reject) start-project request
+exports.handleStartProjectRequest = async (req, res, next) => {
+  try {
+    const { requestId, action } = req.params; // action: 'approve' or 'reject'
+
+    const invitation = await Invitation.findById(requestId)
+      .populate('relatedIdea', 'title author')
+      .populate('sender', 'name');
+
+    if (!invitation) {
+      return errorResponse(res, 404, 'Request not found');
+    }
+
+    // Verify the current user is the idea author
+    if (invitation.relatedIdea.author.toString() !== req.user._id.toString()) {
+      return errorResponse(res, 403, 'Not authorized to handle this request');
+    }
+
+    if (invitation.status !== 'pending') {
+      return errorResponse(res, 400, 'This request has already been handled');
+    }
+
+    if (action === 'approve') {
+      invitation.status = 'accepted';
+
+      // Notify requester: approved - they can now convert to project
+      await notificationService.create({
+        recipient: invitation.sender._id,
+        sender: req.user._id,
+        type: 'start-project-approved',
+        title: 'Request Approved: Convert to Project',
+        message: `Your request to start a project from "${invitation.relatedIdea.title}" was approved. You can now convert it to a project.`,
+        relatedIdea: invitation.relatedIdea._id,
+        relatedInvitation: invitation._id,
+        actionUrl: `/ideas/${invitation.relatedIdea._id}`,
+      });
+    } else if (action === 'reject') {
+      invitation.status = 'rejected';
+
+      // Notify requester: rejected
+      await notificationService.create({
+        recipient: invitation.sender._id,
+        sender: req.user._id,
+        type: 'start-project-rejected',
+        title: 'Request Declined',
+        message: `Your request to start a project from "${invitation.relatedIdea.title}" was not selected. You can re-apply if circumstances change.`,
+        relatedIdea: invitation.relatedIdea._id,
+        relatedInvitation: invitation._id,
+        actionUrl: `/ideas/${invitation.relatedIdea._id}`,
+      });
+    } else {
+      return errorResponse(res, 400, 'Invalid action. Use "approve" or "reject"');
+    }
+
+    await invitation.save();
+
+    successResponse(res, 200, `Request ${action}d successfully`, invitation);
   } catch (error) {
     next(error);
   }

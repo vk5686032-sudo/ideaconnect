@@ -11,6 +11,7 @@ export const projectApi = {
   removeMember: (id, userId) => api.delete(`/projects/${id}/members/${userId}`),
   updateMemberRole: (id, userId, role) => api.put(`/projects/${id}/members/${userId}/role`, { role }),
   requestToJoin: (id, data) => api.post(`/projects/${id}/join-request`, data),
+  getInvitations: (id, params) => api.get(`/projects/${id}/invitations`, { params }),
   handleInvitation: (invitationId, action) => api.post(`/projects/invitations/${invitationId}/${action}`),
   updateProgress: (id, progress) => api.put(`/projects/${id}/progress`, { progress }),
   getMy: () => api.get('/projects/my/projects'),

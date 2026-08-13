@@ -15,6 +15,11 @@ export const ideaApi = {
   updateComment: (id, data) => api.put(`/ideas/comments/${id}`, data),
   deleteComment: (id) => api.delete(`/ideas/comments/${id}`),
   likeComment: (id) => api.post(`/ideas/comments/${id}/like`),
+  // Start-project request methods
+  requestStartProject: (ideaId, data) => api.post(`/ideas/${ideaId}/start-project-request`, data),
+  getStartProjectRequests: (ideaId) => api.get(`/ideas/${ideaId}/start-project-requests`),
+  getMyStartProjectRequest: (ideaId) => api.get(`/ideas/${ideaId}/my-start-project-request`),
+  handleStartProjectRequest: (requestId, action) => api.post(`/ideas/start-project-requests/${requestId}/${action}`),
 };
 
 export default ideaApi;

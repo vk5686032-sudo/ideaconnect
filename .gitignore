@@ -9,6 +9,7 @@ build/
 .env
 .env.local
 .env.*.local
+CLAUDE.md
 
 # Keep the safe templates
 !.env.example

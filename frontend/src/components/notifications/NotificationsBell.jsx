@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck } from 'lucide-react';
 import notificationApi from '../../api/notification.api';
 import useSocket from '../../hooks/useSocket';
@@ -11,6 +11,7 @@ const NotificationsBell = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Call useSocket so its connect effect runs (declared first) and the socket
   // is available when the listener effect below executes. MainLayout shares the
@@ -73,13 +74,29 @@ const NotificationsBell = () => {
 
   const getNotificationText = (n) => {
     switch (n.type) {
-      case 'like':       return `liked your idea`;
-      case 'comment':    return `commented on your idea`;
-      case 'reply':      return `replied to your comment`;
-      case 'invitation': return `sent you a project invitation`;
-      case 'mentor-review': return `reviewed your idea`;
-      case 'ai-analysis':    return `AI analysis is complete`;
-      default:           return n.message || 'sent a notification';
+      case 'like':                   return `liked your idea`;
+      case 'comment':                return `commented on your idea`;
+      case 'reply':                  return `replied to your comment`;
+      case 'invitation':             return `sent you a project invitation`;
+      case 'join-request':           return `requested to join your project`;
+      case 'project-update':         return `updated a project`;
+      case 'task-assigned':          return `assigned you a task`;
+      case 'mentor-review':          return `reviewed your idea`;
+      case 'ai-analysis':            return `AI analysis is complete`;
+      case 'start-project-request':  return `requested to start a project from your idea`;
+      case 'start-project-approved': return `approved your request to start a project`;
+      case 'start-project-rejected': return `declined your request to start a project`;
+      default:                       return n.message || 'sent a notification';
+    }
+  };
+
+  const handleNotificationClick = (notification) => {
+    if (!notification.read) markRead.mutate(notification._id);
+    setOpen(false);
+
+    // Navigate based on actionUrl if present
+    if (notification.actionUrl) {
+      navigate(notification.actionUrl);
     }
   };
 
@@ -119,10 +136,7 @@ const NotificationsBell = () => {
               notifications.map((n) => (
                 <button
                   key={n._id}
-                  onClick={() => {
-                    if (!n.read) markRead.mutate(n._id);
-                    setOpen(false);
-                  }}
+                  onClick={() => handleNotificationClick(n)}
                   className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-start gap-3 ${
                     !n.read ? 'bg-primary-50/40' : ''
                   }`}

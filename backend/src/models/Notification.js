@@ -25,6 +25,9 @@ const notificationSchema = new mongoose.Schema(
         'mentor-review',
         'ai-analysis',
         'system',
+        'start-project-request',
+        'start-project-approved',
+        'start-project-rejected',
       ],
       required: true,
     },
@@ -51,6 +54,10 @@ const notificationSchema = new mongoose.Schema(
     relatedTask: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Task',
+    },
+    relatedInvitation: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Invitation',
     },
     read: {
       type: Boolean,

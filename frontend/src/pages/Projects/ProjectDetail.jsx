@@ -82,10 +82,16 @@ const ProjectDetail = () => {
   });
 
   const requestToJoin = () => {
-    if (joinRequestMessage.trim()) {
-      joinMutation.mutate({ message: joinRequestMessage });
-    }
+    joinMutation.mutate({ message: joinRequestMessage });
   };
+
+  // Owner: fetch pending join requests
+  const { data: invitationsData, refetch: refetchInvitations } = useQuery({
+    queryKey: ['project-invitations', id],
+    queryFn: () => projectApi.getInvitations(id, { status: 'pending' }),
+    enabled: !!project && user?._id === project.owner?._id,
+  });
+  const pendingInvitations = invitationsData?.data?.data || [];
 
   const removeMemberMutation = useMutation({
     mutationFn: (userId) => projectApi.removeMember(id, userId),
@@ -152,6 +158,26 @@ const ProjectDetail = () => {
       title: milestoneForm.title.trim(),
       description: milestoneForm.description.trim() || undefined,
     });
+  };
+
+  // Handle accepting/rejecting join requests - must be before any early returns
+  const handleJoinRequestMutation = useMutation({
+    mutationFn: ({ invitationId, action }) =>
+      projectApi.handleInvitation(invitationId, action),
+    onSuccess: (_, { action }) => {
+      queryClient.invalidateQueries(['project-invitations', id]);
+      queryClient.invalidateQueries(['project', id]);
+      toast.success(`Request ${action}ed`);
+    },
+    onError: (error, { action }) => {
+      toast.error(error.response?.data?.message || `Failed to ${action} request`);
+    },
+  });
+
+  const handleJoinRequestAction = (invitationId, action) => {
+    if (window.confirm(action === 'accept' ? 'Accept this join request?' : 'Reject this join request?')) {
+      handleJoinRequestMutation.mutate({ invitationId, action });
+    }
   };
 
   if (isLoading) {
@@ -430,7 +456,7 @@ const ProjectDetail = () => {
             </div>
           )}
 
-          {/* Request to Join */}
+          {/* Request to Join (non-members) */}
           {!isMember && !isOwner && (
             <div className="card">
               <h2 className="text-lg font-semibold mb-4">Request to Join</h2>
@@ -440,18 +466,60 @@ const ProjectDetail = () => {
               <textarea
                 value={joinRequestMessage}
                 onChange={(e) => setJoinRequestMessage(e.target.value)}
-                placeholder="Tell the owner why you'd like to join..."
+                placeholder="Tell the owner why you'd like to join... (optional)"
                 className="input-field mb-3"
                 rows={3}
               />
               <button
                 onClick={requestToJoin}
-                disabled={joinMutation.isLoading || !joinRequestMessage.trim()}
+                disabled={joinMutation.isLoading}
                 className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <UserPlus className="w-5 h-5" />
                 {joinMutation.isLoading ? 'Sending...' : 'Request to Join'}
               </button>
+            </div>
+          )}
+
+          {/* Pending Join Requests (owner only) */}
+          {isOwner && pendingInvitations.length > 0 && (
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-4">Pending Join Requests</h2>
+              <div className="space-y-3">
+                {pendingInvitations.map((inv) => (
+                  <div key={inv._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {inv.sender?.avatar?.url ? (
+                        <img src={inv.sender.avatar.url} alt="" className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
+                          <UserPlus className="w-4 h-4 text-primary-600" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-sm">{inv.sender?.name}</p>
+                        {inv.message && <p className="text-xs text-gray-500 mt-1">{inv.message}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleJoinRequestAction(inv._id, 'accept')}
+                        disabled={handleJoinRequestMutation.isLoading}
+                        className="btn-success text-sm flex items-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Accept
+                      </button>
+                      <button
+                        onClick={() => handleJoinRequestAction(inv._id, 'reject')}
+                        disabled={handleJoinRequestMutation.isLoading}
+                        className="btn-danger text-sm flex items-center gap-1"
+                      >
+                        <X className="w-3.5 h-3.5" /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

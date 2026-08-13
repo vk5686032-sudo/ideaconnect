@@ -323,6 +323,7 @@ exports.requestToJoin = async (req, res, next) => {
       title: 'Join Request',
       message: `${req.user.name} requested to join "${project.title}"`,
       relatedProject: project._id,
+      relatedInvitation: invitation._id,
       actionUrl: `/projects/${project._id}`,
     });
 
@@ -376,6 +377,7 @@ exports.inviteMember = async (req, res, next) => {
       title: 'Project Invitation',
       message: `${req.user.name} invited you to join "${project.title}"`,
       relatedProject: project._id,
+      relatedInvitation: invitation._id,
       actionUrl: `/projects/${project._id}`,
     });
 
@@ -424,6 +426,35 @@ exports.handleInvitation = async (req, res, next) => {
     await invitation.save();
 
     successResponse(res, 200, `Invitation ${action}ed successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get pending join requests for a project (owner only)
+exports.getProjectInvitations = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.query;
+
+    const project = await Project.findById(id);
+    if (!project) {
+      return errorResponse(res, 404, 'Project not found');
+    }
+
+    // Only owner can see join requests
+    if (project.owner.toString() !== req.user._id.toString()) {
+      return errorResponse(res, 403, 'Only the project owner can view join requests');
+    }
+
+    const query = { relatedProject: id, type: 'team-request' };
+    if (status) query.status = status;
+
+    const invitations = await Invitation.find(query)
+      .populate('sender', 'name avatar')
+      .sort({ createdAt: -1 });
+
+    successResponse(res, 200, 'Join requests retrieved successfully', invitations);
   } catch (error) {
     next(error);
   }
