@@ -14,18 +14,22 @@ const normalizeUser = (user) => {
 
 const useAuthStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       token: null,
       isAuthenticated: false,
 
-      setAuth: (user, token) => {
+      setAuth: (user, token, refreshToken) => {
         localStorage.setItem('token', token);
+        if (refreshToken) {
+          localStorage.setItem('refreshToken', refreshToken);
+        }
         set({ user: normalizeUser(user), token, isAuthenticated: true });
       },
 
       logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         set({ user: null, token: null, isAuthenticated: false });
       },
 

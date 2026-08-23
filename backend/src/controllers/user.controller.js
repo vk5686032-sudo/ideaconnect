@@ -2,6 +2,11 @@ const User = require('../models/User');
 const { successResponse, errorResponse, paginatedResponse } = require('../utils/response');
 const cloudinary = require('../config/cloudinary');
 
+// Public-safe user fields. Never expose emails or auth tokens via
+// directory endpoints.
+const PUBLIC_USER_FIELDS =
+  'name role avatar bio skills interests reputation isVerified createdAt';
+
 // Get all users (with pagination and search)
 exports.getAllUsers = async (req, res, next) => {
   try {
@@ -25,7 +30,7 @@ exports.getAllUsers = async (req, res, next) => {
 
     const total = await User.countDocuments(query);
     const users = await User.find(query)
-      .select('-password')
+      .select(PUBLIC_USER_FIELDS)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -39,8 +44,17 @@ exports.getAllUsers = async (req, res, next) => {
 // Get user by ID
 exports.getUserById = async (req, res, next) => {
   try {
+    // Emails are private: only the account owner and admins see them
+    const viewer = req.user;
+    const isSelf = viewer && viewer._id.toString() === req.params.id;
+    const isAdmin = viewer?.role === 'admin';
+    const select =
+      PUBLIC_USER_FIELDS +
+      ' education experience socialLinks' +
+      (isSelf || isAdmin ? ' email' : '');
+
     const user = await User.findById(req.params.id)
-      .select('-password')
+      .select(select)
       .populate('ideasCreated')
       .populate('projectsJoined');
 
@@ -180,6 +194,53 @@ exports.getUserStats = async (req, res, next) => {
   }
 };
 
+// Register a device for Expo push notifications (mobile app)
+exports.registerPushToken = async (req, res, next) => {
+  try {
+    const { token, platform } = req.body;
+
+    if (!token) {
+      return errorResponse(res, 400, 'Push token is required');
+    }
+
+    const user = await User.findById(req.user._id);
+
+    // Replace existing entry if re-registering the same device
+    user.pushTokens = (user.pushTokens || []).filter((p) => p.token !== token);
+    user.pushTokens.push({
+      token,
+      platform: platform || 'android',
+      addedAt: new Date(),
+    });
+
+    // Cap registered devices
+    while (user.pushTokens.length > 5) {
+      user.pushTokens.shift();
+    }
+
+    await user.save();
+
+    successResponse(res, 200, 'Push token registered', { pushTokens: user.pushTokens });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Remove a device's push registration
+exports.unregisterPushToken = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $pull: { pushTokens: { token } },
+    });
+
+    successResponse(res, 200, 'Push token removed');
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Search users by skills
 exports.searchBySkills = async (req, res, next) => {
   try {
@@ -193,7 +254,7 @@ exports.searchBySkills = async (req, res, next) => {
 
     const users = await User.find({
       skills: { $in: skillsArray.map((s) => new RegExp(s, 'i')) },
-    }).select('-password');
+    }).select(PUBLIC_USER_FIELDS);
 
     successResponse(res, 200, 'Users found', users);
   } catch (error) {

@@ -77,11 +77,15 @@ const NotificationsBell = () => {
       case 'like':                   return `liked your idea`;
       case 'comment':                return `commented on your idea`;
       case 'reply':                  return `replied to your comment`;
+      case 'mention':                return `mentioned you`;
       case 'invitation':             return `sent you a project invitation`;
       case 'join-request':           return `requested to join your project`;
       case 'project-update':         return `updated a project`;
       case 'task-assigned':          return `assigned you a task`;
       case 'mentor-review':          return `reviewed your idea`;
+      case 'mentor-request':         return `requested your mentorship`;
+      case 'mentor-request-accepted':  return `accepted your mentorship request`;
+      case 'mentor-request-rejected':  return `declined your mentorship request`;
       case 'ai-analysis':            return `AI analysis is complete`;
       case 'start-project-request':  return `requested to start a project from your idea`;
       case 'start-project-approved': return `approved your request to start a project`;
@@ -116,7 +120,7 @@ const NotificationsBell = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[320px] max-w-[calc(100vw-1rem)] sm:w-[380px] bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-[320px] max-w-[calc(100vw-1rem)] sm:w-[380px] bg-white rounded-xl shadow-xl border border-gray-100 z-[100] overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-sm">Notifications</h3>
             {unreadCount > 0 && (

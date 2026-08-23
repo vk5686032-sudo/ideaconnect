@@ -14,7 +14,7 @@ const invitationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['project-invite', 'team-request', 'mentor-request', 'start-project-request'],
+      enum: ['project-invite', 'team-request', 'mentor-request', 'start-project-request', 'idea-invite'],
       required: true,
     },
     status: {
@@ -36,7 +36,7 @@ const invitationSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['lead', 'developer', 'designer', 'researcher', 'mentor'],
+      enum: ['lead', 'developer', 'designer', 'researcher', 'mentor', 'member'],
       default: 'developer',
     },
     expiresAt: {

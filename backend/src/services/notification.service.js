@@ -1,6 +1,7 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { getIO } = require('../config/socket');
+const { sendPushToUser } = require('./push.service');
 
 const create = async (notificationData) => {
   try {
@@ -17,6 +18,18 @@ const create = async (notificationData) => {
     } catch (socketError) {
       // Socket.io not initialized (e.g. during seeding) — DB record is enough
     }
+
+    // Expo push for mobile devices (fire-and-forget, best effort)
+    const senderName = notification.sender?.name || 'Someone';
+    sendPushToUser(notification.recipient, {
+      title: notification.title || 'IdeaConnect',
+      body: `${senderName}: ${notification.message || ''}`.trim(),
+      data: {
+        type: notification.type,
+        notificationId: String(notification._id),
+        actionUrl: notification.actionUrl || null,
+      },
+    });
 
     return notification;
   } catch (error) {

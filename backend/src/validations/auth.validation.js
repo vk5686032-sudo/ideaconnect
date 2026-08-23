@@ -71,7 +71,9 @@ const validate = (schema) => {
       });
       next();
     } catch (error) {
-      const errors = error.errors.map((err) => err.message);
+      // Zod 4 uses `issues`; keep `errors` fallback for Zod 3
+      const issues = error.issues || error.errors || [];
+      const errors = issues.map((err) => err.message);
       return res.status(400).json({
         success: false,
         message: 'Validation Error',

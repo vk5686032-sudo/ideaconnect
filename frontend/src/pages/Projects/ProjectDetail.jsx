@@ -2,12 +2,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
-  FolderKanban, Users, Calendar, Globe, Link as LinkIcon,
-  UserPlus, Check, X, Trash2, MessageSquare, Play, Plus, Flag, Edit2, Search,
+  FolderKanban, Users, Calendar, Globe,
+  UserPlus, Check, X, Trash2, MessageSquare, Plus, Flag, Edit2, Search, AlertTriangle,
 } from 'lucide-react';
 import { GithubIcon } from '../../components/common/BrandIcons';
 import toast from 'react-hot-toast';
 import BackButton from '../../components/common/BackButton';
+import ReportModal from '../../components/reports/ReportModal';
 import projectApi from '../../api/project.api';
 import taskApi from '../../api/task.api';
 import userApi from '../../api/user.api';
@@ -19,11 +20,13 @@ const ProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [milestoneForm, setMilestoneForm] = useState({ title: '', description: '' });
   const [showAddMember, setShowAddMember] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
+  const [showDeleteProject, setShowDeleteProject] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const { data: projectData, isLoading } = useQuery({
     queryKey: ['project', id],
@@ -86,7 +89,7 @@ const ProjectDetail = () => {
   };
 
   // Owner: fetch pending join requests
-  const { data: invitationsData, refetch: refetchInvitations } = useQuery({
+  const { data: invitationsData } = useQuery({
     queryKey: ['project-invitations', id],
     queryFn: () => projectApi.getInvitations(id, { status: 'pending' }),
     enabled: !!project && user?._id === project.owner?._id,
@@ -115,11 +118,14 @@ const ProjectDetail = () => {
     },
   });
 
-  const progressMutation = useMutation({
-    mutationFn: (progress) => projectApi.updateProgress(id, progress),
+  const deleteProjectMutation = useMutation({
+    mutationFn: () => projectApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['project', id]);
-      toast.success('Progress updated');
+      toast.success('Project deleted');
+      navigate('/projects');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to delete project');
     },
   });
 
@@ -224,7 +230,43 @@ const ProjectDetail = () => {
                   <Edit2 className="w-4 h-4" /> Edit Project
                 </button>
               )}
+              {user && !isOwner && (
+                <button
+                  onClick={() => setReportOpen(true)}
+                  className="btn-outline text-sm flex items-center gap-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50"
+                  title="Report this project"
+                >
+                  <Flag className="w-4 h-4" />
+                </button>
+              )}
+              {isOwner && (
+                <button
+                  onClick={() => setShowDeleteProject(!showDeleteProject)}
+                  className={`btn-outline text-sm flex items-center gap-1.5 ${showDeleteProject ? '' : 'text-red-600 hover:bg-red-50 border-red-200'}`}
+                >
+                  <Trash2 className="w-4 h-4" /> Delete
+                </button>
+              )}
             </div>
+
+            {showDeleteProject && isOwner && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+                <p className="text-sm text-red-700 flex items-center gap-1 flex-1">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  Permanently delete this project, its tasks, and member links?
+                </p>
+                <button
+                  onClick={() => deleteProjectMutation.mutate()}
+                  disabled={deleteProjectMutation.isPending}
+                  className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {deleteProjectMutation.isPending ? 'Deleting...' : 'Yes, delete'}
+                </button>
+                <button onClick={() => setShowDeleteProject(false)} className="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 whitespace-nowrap">
+                  Cancel
+                </button>
+              </div>
+            )}
 
             <h1 className="text-2xl md:text-3xl font-bold mb-4">{project.title}</h1>
             <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{project.description}</p>
@@ -606,6 +648,16 @@ const ProjectDetail = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report dialog */}
+      {reportOpen && (
+        <ReportModal
+          targetType="project"
+          targetId={id}
+          targetLabel={project?.title}
+          onClose={() => setReportOpen(false)}
+        />
       )}
     </div>
   );

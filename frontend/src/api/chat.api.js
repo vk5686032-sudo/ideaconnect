@@ -7,7 +7,6 @@ export const chatApi = {
   getById: (id) => api.get(`/chats/${id}`),
   getOrCreateProjectChat: (projectId) => api.get(`/chats/project/${projectId}`),
   getMessages: (id, params) => api.get(`/chats/${id}/messages`, { params }),
-  sendMessage: (id, data) => api.post(`/chats/${id}/messages`, data),
   sendAttachment: (id, formData) =>
     api.post(`/chats/${id}/attachments`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -17,7 +16,6 @@ export const chatApi = {
     api.delete(`/chats/${id}/messages/${messageId}`, { params: { scope } }),
   reactToMessage: (id, messageId, emoji) =>
     api.post(`/chats/${id}/messages/${messageId}/reactions`, { emoji }),
-  markAsRead: (id) => api.post(`/chats/${id}/read`),
   addParticipant: (id, userId) => api.post(`/chats/${id}/participants`, { userId }),
   removeParticipant: (id, userId) => api.delete(`/chats/${id}/participants/${userId}`),
   promoteToAdmin: (id, userId) => api.post(`/chats/${id}/participants/${userId}/promote`),

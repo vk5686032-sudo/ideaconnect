@@ -20,6 +20,14 @@ export const ideaApi = {
   getStartProjectRequests: (ideaId) => api.get(`/ideas/${ideaId}/start-project-requests`),
   getMyStartProjectRequest: (ideaId) => api.get(`/ideas/${ideaId}/my-start-project-request`),
   handleStartProjectRequest: (requestId, action) => api.post(`/ideas/start-project-requests/${requestId}/${action}`),
+  // Mentor review methods
+  addMentorReview: (ideaId, data) => api.post(`/ideas/${ideaId}/review`, data),
+  deleteMentorReview: (ideaId) => api.delete(`/ideas/${ideaId}/review`),
+  // Idea team methods
+  inviteToTeam: (ideaId, data) => api.post(`/ideas/${ideaId}/invites`, data),
+  getMyIdeaInvites: () => api.get('/ideas/invites/my'),
+  handleIdeaInvite: (invitationId, action) => api.post(`/ideas/invites/${invitationId}/${action}`),
+  removeTeamMember: (ideaId, userId) => api.delete(`/ideas/${ideaId}/team/${userId}`),
 };
 
 export default ideaApi;

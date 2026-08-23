@@ -23,11 +23,15 @@ const notificationSchema = new mongoose.Schema(
         'project-update',
         'task-assigned',
         'mentor-review',
+        'mentor-request',
+        'mentor-request-accepted',
+        'mentor-request-rejected',
         'ai-analysis',
         'system',
         'start-project-request',
         'start-project-approved',
         'start-project-rejected',
+        'content-report',
       ],
       required: true,
     },
@@ -59,12 +63,27 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Invitation',
     },
+    relatedUser: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
     read: {
       type: Boolean,
       default: false,
     },
     readAt: Date,
     actionUrl: String,
+    // For content reports
+    resolved: {
+      type: Boolean,
+      default: false,
+    },
+    resolvedAt: Date,
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    resolutionNote: String,
   },
   {
     timestamps: true,
@@ -73,5 +92,6 @@ const notificationSchema = new mongoose.Schema(
 
 // Index for faster queries
 notificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
+notificationSchema.index({ type: 1, resolved: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

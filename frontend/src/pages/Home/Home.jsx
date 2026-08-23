@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Lightbulb, Users, Rocket, Sparkles, ArrowRight, Star } from 'lucide-react';
 import ideaApi from '../../api/idea.api';
-import projectApi from '../../api/project.api';
 
 const Home = () => {
   const { data: ideasData } = useQuery({
@@ -10,14 +9,7 @@ const Home = () => {
     queryFn: () => ideaApi.getAll({ limit: 6, sort: 'trending' }),
   });
 
-  const { data: projectsData } = useQuery({
-    queryKey: ['projects', 'featured'],
-    queryFn: () => projectApi.getAll({ limit: 4 }),
-  });
-
   const featuredIdeas = ideasData?.data?.data || [];
-  const featuredProjects = projectsData?.data?.data || [];
-
   return (
     <div>
       {/* Hero Section */}

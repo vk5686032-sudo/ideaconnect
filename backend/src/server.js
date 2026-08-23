@@ -3,6 +3,7 @@ const app = require('./app');
 const connectDB = require('./config/db');
 const { initSocket } = require('./config/socket');
 const config = require('./config/env');
+const { expireStale } = require('./services/invitation.service');
 
 const server = http.createServer(app);
 
@@ -11,6 +12,10 @@ initSocket(server);
 
 // Connect to MongoDB
 connectDB();
+
+// Expire stale invitations now and every hour (silent status flip)
+expireStale();
+setInterval(expireStale, 60 * 60 * 1000).unref();
 
 const PORT = config.port || 5000;
 

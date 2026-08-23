@@ -1,0 +1,7 @@
+{
+  "autoUpdatesChannel": "latest",
+  "theme": "dark-ansi",
+  "permissions": {
+    "defaultMode": "auto"
+  }
+}

@@ -1,14 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, Star, MessageSquare, Eye } from 'lucide-react';
+import { Plus, Search, Star, MessageSquare, Eye } from 'lucide-react';
 import ideaApi from '../../api/idea.api';
-import { CATEGORIES, SORT_OPTIONS } from '../../utils/constants';
+import { CATEGORIES, IDEA_STATUSES, SORT_OPTIONS } from '../../utils/constants';
 
 const Ideas = () => {
   const [filters, setFilters] = useState({
     search: '',
     category: '',
+    status: '',
     sort: 'newest',
     page: 1,
   });
@@ -58,6 +59,18 @@ const Ideas = () => {
           </select>
           <select
             className="input-field"
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
+          >
+            <option value="">All Statuses</option>
+            {IDEA_STATUSES.filter((s) => s.value !== 'draft').map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input-field"
             value={filters.sort}
             onChange={(e) => setFilters({ ...filters, sort: e.target.value, page: 1 })}
           >
@@ -68,7 +81,7 @@ const Ideas = () => {
             ))}
           </select>
           <button
-            onClick={() => setFilters({ search: '', category: '', sort: 'newest', page: 1 })}
+            onClick={() => setFilters({ search: '', category: '', status: '', sort: 'newest', page: 1 })}
             className="btn-secondary"
           >
             Clear Filters
@@ -93,7 +106,9 @@ const Ideas = () => {
             <Link key={idea._id} to={`/ideas/${idea._id}`} className="card-hover">
               <div className="flex items-center gap-2 mb-3">
                 <span className="badge-primary">{idea.category}</span>
-                <span className="badge-success">{idea.status}</span>
+                <span className={`badge ${idea.status === 'open' ? 'badge-success' : idea.status === 'completed' ? 'badge-success' : 'badge-warning'}`}>
+                  {idea.status}
+                </span>
               </div>
               <h3 className="font-semibold text-lg mb-2 line-clamp-2">{idea.title}</h3>
               <p className="text-gray-600 text-sm line-clamp-3 mb-4">{idea.description}</p>

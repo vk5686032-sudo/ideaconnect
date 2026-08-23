@@ -1,16 +1,22 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Lightbulb, FolderKanban, TrendingUp, AlertCircle, LayoutDashboard } from 'lucide-react';
+import { Users, Lightbulb, FolderKanban, TrendingUp, AlertCircle, LayoutDashboard, FileText, ClipboardList, Activity } from 'lucide-react';
 import adminApi from '../../api/admin.api';
 import AdminUsers from './AdminUsers';
 import AdminIdeas from './AdminIdeas';
 import AdminProjects from './AdminProjects';
+import AdminReports from './AdminReports';
+import AdminApprovals from './AdminApprovals';
+import AdminAuditLogs from './AdminAuditLogs';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
+  { id: 'reports', label: 'Reports', icon: FileText },
+  { id: 'approvals', label: 'Approvals', icon: ClipboardList },
+  { id: 'audit', label: 'Audit Logs', icon: Activity },
 ];
 
 const AdminDashboard = () => {
@@ -149,6 +155,9 @@ const AdminDashboard = () => {
       {activeTab === 'users' && <AdminUsers />}
       {activeTab === 'ideas' && <AdminIdeas />}
       {activeTab === 'projects' && <AdminProjects />}
+      {activeTab === 'reports' && <AdminReports />}
+      {activeTab === 'approvals' && <AdminApprovals />}
+      {activeTab === 'audit' && <AdminAuditLogs />}
     </div>
   );
 };

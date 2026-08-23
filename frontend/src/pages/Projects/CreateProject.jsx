@@ -54,11 +54,11 @@ const CreateProject = () => {
   };
 
   // Pre-fill technologies when editing an existing project
+  const techKey = (existingProject?.technologies || []).join(',');
   useEffect(() => {
-    if (existingProject?.technologies?.length) {
-      setTechnologies(existingProject.technologies);
-    }
-  }, [existingProject?._id]);
+    if (!techKey) return;
+    setTechnologies(techKey.split(','));
+  }, [techKey]);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(projectSchema),

@@ -31,8 +31,8 @@ const Login = () => {
     try {
       setIsLoading(true);
       const response = await authApi.login(data);
-      const { user, token } = response.data.data;
-      setAuth(user, token);
+      const { user, token, refreshToken } = response.data.data;
+      setAuth(user, token, refreshToken);
       toast.success('Login successful!');
       navigate('/dashboard');
     } catch (error) {

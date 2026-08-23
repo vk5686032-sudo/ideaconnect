@@ -210,40 +210,8 @@ exports.getMessages = async (req, res, next) => {
 };
 
 // Send message
-exports.sendMessage = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { content, replyTo } = req.body;
-
-    const chat = await Chat.findById(id);
-    if (!chat) {
-      return errorResponse(res, 404, 'Chat not found');
-    }
-
-    // Check if user is participant
-    if (!chat.participants.includes(req.user._id)) {
-      return errorResponse(res, 403, 'Not authorized');
-    }
-
-    const message = await Message.create({
-      chat: id,
-      sender: req.user._id,
-      content,
-      replyTo: replyTo || null,
-      readBy: [{ user: req.user._id }],
-    });
-
-    // Update last message in chat
-    chat.lastMessage = message._id;
-    await chat.save();
-
-    await message.populate('sender', 'name avatar');
-
-    successResponse(res, 201, 'Message sent successfully', message);
-  } catch (error) {
-    next(error);
-  }
-};
+// (REST send removed — messages are sent via the `message:send` socket event,
+//  see src/sockets/chat.socket.js)
 
 // Send a message with a file attachment (multipart: file + optional content)
 exports.sendAttachment = async (req, res, next) => {
@@ -427,20 +395,8 @@ exports.reactToMessage = async (req, res, next) => {
 };
 
 // Mark messages as read
-exports.markAsRead = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    await Message.updateMany(
-      { chat: id, 'readBy.user': { $ne: req.user._id } },
-      { $push: { readBy: { user: req.user._id, readAt: new Date() } } }
-    );
-
-    successResponse(res, 200, 'Messages marked as read');
-  } catch (error) {
-    next(error);
-  }
-};
+// (REST read removed — read receipts flow through the `messages:read` socket
+//  event, see src/sockets/chat.socket.js)
 
 // Add participant to group
 exports.addParticipant = async (req, res, next) => {

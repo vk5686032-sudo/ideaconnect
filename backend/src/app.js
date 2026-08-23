@@ -3,8 +3,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
 const config = require('./config/env');
 const errorHandler = require('./middlewares/errorHandler');
+const openapiSpec = require('./docs/swagger');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -16,6 +18,8 @@ const aiRoutes = require('./routes/ai.routes');
 const adminRoutes = require('./routes/admin.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const taskRoutes = require('./routes/task.routes');
+const mentorRoutes = require('./routes/mentor.routes');
+const reportRoutes = require('./routes/report.routes');
 
 const app = express();
 
@@ -59,12 +63,28 @@ app.use(
 // Rate limiting — generous default (600/15min) since a single page load fires
 // several API calls and notifications poll periodically. Override via
 // RATE_LIMIT_MAX env var. Only counted for real users (skip internal calls).
+const isPrivateIP = (ip) => {
+  // IPv4 private ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x, 127.x.x.x
+  // IPv6 loopback: ::1, ::ffff:127.0.0.1
+  if (!ip) return true;
+  const cleanIp = ip.replace('::ffff:', '');
+  if (['127.0.0.1', '::1'].includes(cleanIp)) return true;
+  const parts = cleanIp.split('.');
+  if (parts.length === 4) {
+    const [a, b] = parts.map(Number);
+    if (a === 10) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
+};
+
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
   message: 'Too many requests from this IP, please try again later.',
-  // Skip loopback (127.0.0.1/::1) — local dev + health checks shouldn't trip it
-  skip: (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip),
+  // Skip private IPs (localhost + LAN) — local dev shouldn't trip it
+  skip: (req) => isPrivateIP(req.ip),
 });
 app.use('/api', limiter);
 
@@ -80,21 +100,34 @@ if (config.nodeEnv === 'development') {
 // Static files
 app.use('/uploads', express.static('src/uploads'));
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/ideas', ideaRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/chats', chatRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api', taskRoutes);
+// API Routes — single versioned router
+const apiRouter = express.Router();
+
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
+apiRouter.use('/ideas', ideaRoutes);
+apiRouter.use('/projects', projectRoutes);
+apiRouter.use('/chats', chatRoutes);
+apiRouter.use('/ai', aiRoutes);
+apiRouter.use('/admin', adminRoutes);
+apiRouter.use('/notifications', notificationRoutes);
+apiRouter.use('/mentors', mentorRoutes);
+apiRouter.use('/reports', reportRoutes);
+apiRouter.use('/', taskRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
+apiRouter.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
+
+// Current versioned surface (mobile + new clients)
+app.use('/api/v1', apiRouter);
+// Legacy alias — keeps the existing web build and older integrations working
+app.use('/api', apiRouter);
+
+// OpenAPI docs (raw JSON + Swagger UI)
+app.get('/api/v1/docs.json', (req, res) => res.json(openapiSpec));
+app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 // 404 handler
 app.use((req, res) => {

@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, Eye, Loader2, Users } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Search, Eye, Loader2, Users, Archive, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import adminApi from '../../api/admin.api';
 
 const AdminProjects = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedProjects, setSelectedProjects] = useState([]);
+  const [bulkAction, setBulkAction] = useState('');
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-projects', search, statusFilter],
@@ -21,6 +25,51 @@ const AdminProjects = () => {
     planning: 'bg-gray-100 text-gray-700',
     'on-hold': 'bg-yellow-100 text-yellow-700',
     cancelled: 'bg-red-100 text-red-700',
+  };
+
+  const invalidate = () => {
+    queryClient.invalidateQueries(['admin-projects']);
+    queryClient.invalidateQueries(['admin-stats']);
+  };
+
+  const moderateMutation = useMutation({
+    mutationFn: ({ id, action }) => adminApi.moderateProject(id, action),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Project moderated');
+    },
+    onError: () => toast.error('Failed to moderate project'),
+  });
+
+  const bulkMutation = useMutation({
+    mutationFn: ({ ids, action }) => adminApi.bulkProjectAction(ids, action),
+    onSuccess: (_, { action }) => {
+      invalidate();
+      toast.success(`Bulk ${action} completed`);
+      setSelectedProjects([]);
+      setBulkAction('');
+    },
+    onError: () => toast.error('Bulk action failed'),
+  });
+
+  const toggleSelectAll = () => {
+    if (selectedProjects.length === projects.length) {
+      setSelectedProjects([]);
+    } else {
+      setSelectedProjects(projects.map((p) => p._id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedProjects((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkAction = () => {
+    if (!bulkAction || selectedProjects.length === 0) return;
+    if (!window.confirm(`Apply "${bulkAction}" to ${selectedProjects.length} project(s)?`)) return;
+    bulkMutation.mutate({ ids: selectedProjects, action: bulkAction });
   };
 
   return (
@@ -56,10 +105,43 @@ const AdminProjects = () => {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          {selectedProjects.length > 0 && (
+            <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-yellow-800">
+                {selectedProjects.length} project(s) selected
+              </span>
+              <div className="flex items-center gap-2">
+                <select
+                  className="input-field py-1.5 text-sm w-auto"
+                  value={bulkAction}
+                  onChange={(e) => setBulkAction(e.target.value)}
+                >
+                  <option value="">Bulk action...</option>
+                  <option value="archive">Archive</option>
+                  <option value="delete">Delete</option>
+                </select>
+                <button
+                  onClick={handleBulkAction}
+                  disabled={!bulkAction}
+                  className="btn-primary text-sm px-3 py-1.5 disabled:opacity-50"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                  <th className="px-4 py-3 font-medium w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedProjects.length === projects.length && projects.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600"
+                    />
+                  </th>
                   <th className="px-4 py-3 font-medium">Project</th>
                   <th className="px-4 py-3 font-medium">Owner</th>
                   <th className="px-4 py-3 font-medium">Members</th>
@@ -71,6 +153,14 @@ const AdminProjects = () => {
               <tbody className="divide-y divide-gray-50">
                 {projects.map((p) => (
                   <tr key={p._id} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedProjects.includes(p._id)}
+                        onChange={() => toggleSelect(p._id)}
+                        className="w-4 h-4 rounded border-gray-300 text-primary-600"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium line-clamp-1 max-w-[240px]">{p.title}</p>
                     </td>
@@ -94,17 +184,41 @@ const AdminProjects = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
                         <Link to={`/projects/${p._id}`} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg" title="View">
                           <Eye className="w-4 h-4" />
                         </Link>
+                        {p.status !== 'cancelled' && (
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Archive this project?')) {
+                                moderateMutation.mutate({ id: p._id, action: 'archive' });
+                              }
+                            }}
+                            className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded-lg"
+                            title="Archive"
+                          >
+                            <Archive className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Delete this project permanently?')) {
+                              moderateMutation.mutate({ id: p._id, action: 'delete' });
+                            }
+                          }}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
                 {projects.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                       No projects found.
                     </td>
                   </tr>

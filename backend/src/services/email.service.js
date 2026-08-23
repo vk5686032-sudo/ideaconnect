@@ -26,10 +26,14 @@ if (smtpConfigured) {
   });
 }
 
-const deliver = async (email, subject, html) => {
+const deliver = async (email, subject, html, devUrl) => {
   if (!transporter) {
     // Demo/test mode — don't attempt a real send, just log it.
     console.log(`[email:skipped] to=${email} subject="${subject}" (SMTP not configured)`);
+    // Surface action URLs in demo mode so flows remain testable without SMTP
+    if (devUrl) {
+      console.log(`[email:demo-link] ${devUrl}`);
+    }
     return { skipped: true };
   }
   return transporter.sendMail({
@@ -54,7 +58,8 @@ const sendVerificationEmail = (email, token, name) => {
         <p>Or copy this link: ${verificationUrl}</p>
         <p>This link expires in 24 hours.</p>
       </div>
-    `
+    `,
+    verificationUrl
   );
 };
 
@@ -74,7 +79,8 @@ const sendResetEmail = (email, token, name) => {
         <p>This link expires in 10 minutes.</p>
         <p>If you didn't request this, please ignore this email.</p>
       </div>
-    `
+    `,
+    resetUrl
   );
 };
 

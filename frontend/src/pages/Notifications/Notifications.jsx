@@ -38,11 +38,15 @@ const Notifications = () => {
       case 'like':                   return `liked your idea`;
       case 'comment':                return `commented on your idea`;
       case 'reply':                  return `replied to your comment`;
+      case 'mention':                return `mentioned you`;
       case 'invitation':             return `sent you a project invitation`;
       case 'join-request':           return `requested to join your project`;
       case 'project-update':         return `updated a project`;
       case 'task-assigned':          return `assigned you a task`;
       case 'mentor-review':          return `reviewed your idea`;
+      case 'mentor-request':         return `requested your mentorship`;
+      case 'mentor-request-accepted':  return `accepted your mentorship request`;
+      case 'mentor-request-rejected':  return `declined your mentorship request`;
       case 'ai-analysis':            return `AI analysis is complete`;
       case 'start-project-request':  return `requested to start a project from your idea`;
       case 'start-project-approved': return `approved your request to start a project`;

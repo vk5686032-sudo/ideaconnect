@@ -46,8 +46,12 @@ const projectSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ['planning', 'in-progress', 'on-hold', 'completed', 'cancelled'],
+      enum: ['planning', 'in-progress', 'on-hold', 'completed', 'cancelled', 'pending-approval', 'rejected'],
       default: 'planning',
+    },
+    rejectionReason: {
+      type: String,
+      default: '',
     },
     visibility: {
       type: String,

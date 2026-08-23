@@ -102,8 +102,12 @@ const ideaSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ['draft', 'open', 'in-progress', 'completed', 'archived'],
+      enum: ['draft', 'open', 'in-progress', 'completed', 'archived', 'pending-approval', 'rejected'],
       default: 'open',
+    },
+    rejectionReason: {
+      type: String,
+      default: '',
     },
     visibility: {
       type: String,

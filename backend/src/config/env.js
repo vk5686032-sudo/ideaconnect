@@ -8,7 +8,9 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   mongoUri: process.env.MONGODB_URI,
   jwtSecret: process.env.JWT_SECRET,
-  jwtExpire: process.env.JWT_EXPIRE || '7d',
+  // Short-lived access token; renewed silently via the refresh token
+  jwtExpire: process.env.JWT_EXPIRE || '15m',
+  refreshTokenExpireDays: Number(process.env.REFRESH_TOKEN_EXPIRE_DAYS) || 30,
   // API rate limit: requests per window per IP. Defaults are generous for a
   // demo/LAN app — the frontend fires several calls per page load and polls
   // notifications. Set RATE_LIMIT_MAX to tune for production.

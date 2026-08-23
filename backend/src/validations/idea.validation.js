@@ -31,9 +31,21 @@ const createCommentSchema = z.object({
   }),
 });
 
+const mentorReviewSchema = z.object({
+  body: z.object({
+    review: z.string().min(10, 'Review must be at least 10 characters').max(2000),
+    rating: z
+      .number({ invalid_type_error: 'Rating must be a number' })
+      .int('Rating must be an integer')
+      .min(1, 'Rating must be between 1 and 5')
+      .max(5, 'Rating must be between 1 and 5'),
+  }),
+});
+
 module.exports = {
   createIdeaSchema,
   updateIdeaSchema,
   createCommentSchema,
+  mentorReviewSchema,
   validate,
 };

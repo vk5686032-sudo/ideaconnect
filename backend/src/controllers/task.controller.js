@@ -2,6 +2,7 @@ const Task = require('../models/Task');
 const Project = require('../models/Project');
 const { successResponse, errorResponse } = require('../utils/response');
 const notificationService = require('../services/notification.service');
+const reputationService = require('../services/reputation.service');
 
 // Recalculate project progress based on completed tasks
 const recalcProjectProgress = async (projectId) => {
@@ -118,7 +119,15 @@ exports.updateTask = async (req, res, next) => {
     // Track completion
     if (updateData.status === 'completed' && task.status !== 'completed') {
       updateData.completedAt = new Date();
+      // Reward the assignee for delivering the task
+      if (task.assignedTo) {
+        await reputationService.award(task.assignedTo, reputationService.POINTS.TASK_COMPLETED);
+      }
     } else if (updateData.status && updateData.status !== 'completed') {
+      if (task.status === 'completed' && task.assignedTo) {
+        // Un-completing reverses the earlier reward
+        await reputationService.award(task.assignedTo, -reputationService.POINTS.TASK_COMPLETED);
+      }
       updateData.completedAt = null;
     }
 

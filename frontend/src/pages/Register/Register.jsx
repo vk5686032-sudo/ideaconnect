@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, Eye, EyeOff, Loader2, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, User, CheckCircle2, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authSlice';
 import authApi from '../../api/auth.api';
@@ -21,6 +21,7 @@ const registerSchema = z.object({
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState(null);
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
@@ -40,15 +41,45 @@ const Register = () => {
         email: data.email,
         password: data.password,
       });
-      const { user, token } = response.data.data;
-      setAuth(user, token);
-      toast.success('Registration successful! Please check your email for verification.');
-      navigate('/dashboard');
+      const { user, token, refreshToken } = response.data.data;
+      setAuth(user, token, refreshToken);
+      setRegisteredEmail(data.email);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Post-registration: prompt the user to verify their email
+  if (registeredEmail) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="card text-center py-8">
+          <CheckCircle2 className="w-14 h-14 text-green-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Account Created!</h2>
+          <p className="text-gray-600 text-sm mb-6">
+            We sent a verification link to <span className="font-medium">{registeredEmail}</span>.
+            You can start exploring right away — verifying your email keeps your account secure and
+            enables full features later.
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="btn-outline w-full flex items-center justify-center gap-2"
+            >
+              Continue to Dashboard <ArrowRight className="w-4 h-4" />
+            </button>
+            <Link
+              to="/verify-email"
+              className="block text-sm text-primary-600 hover:text-primary-700 pt-1"
+            >
+              Didn't get the email? Resend verification
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (

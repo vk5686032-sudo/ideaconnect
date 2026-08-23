@@ -15,7 +15,6 @@ const Teams = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', members: [] });
   const [search, setSearch] = useState('');
-  const [picked, setPicked] = useState([]);
 
   const { data: chatsData, isLoading } = useQuery({
     queryKey: ['chats'],

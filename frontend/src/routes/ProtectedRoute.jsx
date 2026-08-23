@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/authSlice';
 
 export const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const location = useLocation();
 
   if (!isAuthenticated) {

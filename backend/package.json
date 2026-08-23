@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "seed": "node src/seed.js",
     "seed:dry": "node src/seed.js --dry",
+    "backfill:reputation": "node scripts/backfill-reputation.js",
     "test": "node --test src/__tests__/*.test.js"
   },
   "keywords": [
@@ -23,6 +24,7 @@
     "cloudinary": "^2.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "expo-server-sdk": "^7.1.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.1",
     "helmet": "^8.3.0",
@@ -32,6 +34,8 @@
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
     "socket.io": "^4.8.3",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

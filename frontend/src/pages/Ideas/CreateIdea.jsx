@@ -16,6 +16,7 @@ const ideaSchema = z.object({
   description: z.string().min(20, 'Description must be at least 20 characters').max(5000),
   category: z.string().min(1, 'Please select a category'),
   visibility: z.string(),
+  status: z.string(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -27,7 +28,6 @@ const CreateIdea = () => {
   const [skillInput, setSkillInput] = useState('');
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
 
   const isEditing = !!id;
 
@@ -39,21 +39,23 @@ const CreateIdea = () => {
 
   const existingIdea = existingData?.data?.data;
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm({
     resolver: zodResolver(ideaSchema),
     defaultValues: {
       title: existingIdea?.title || '',
       description: existingIdea?.description || '',
       category: existingIdea?.category || '',
       visibility: existingIdea?.visibility || 'public',
+      status: existingIdea?.status || 'open',
     },
   });
 
   const createMutation = useMutation({
     mutationFn: (data) => (isEditing ? ideaApi.update(id, data) : ideaApi.create(data)),
-    onSuccess: (response) => {
+    onSuccess: (response, variables) => {
       queryClient.invalidateQueries(['ideas']);
-      toast.success(isEditing ? 'Idea updated!' : 'Idea created!');
+      const isDraft = variables.status === 'draft';
+      toast.success(isDraft ? 'Draft saved!' : isEditing ? 'Idea updated!' : 'Idea created!');
       navigate(`/ideas/${response.data.data._id}`);
     },
     onError: (error) => {
@@ -74,17 +76,6 @@ const CreateIdea = () => {
     onSuccess: (response) => {
       setValue('description', response.data.data.improvedDescription || response.data.data);
       toast.success('Description improved by AI');
-    },
-  });
-
-  const checkDuplicatesMutation = useMutation({
-    mutationFn: (data) => aiApi.checkDuplicates(data),
-    onSuccess: (response) => {
-      if (response.data.data.hasDuplicates) {
-        toast.warning('Similar ideas found!');
-      } else {
-        toast.success('No duplicates found');
-      }
     },
   });
 
@@ -128,8 +119,8 @@ const CreateIdea = () => {
           <button
             type="button"
             onClick={() => improveTitleMutation.mutate({
-              title: setValue ? '' : '',
-              description: setValue ? '' : '',
+              title: getValues('title') || '',
+              description: getValues('description') || '',
             })}
             className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
           >
@@ -196,6 +187,18 @@ const CreateIdea = () => {
                 {opt.label}
               </option>
             ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Private and invite-only ideas are only visible to you and your team.
+          </p>
+        </div>
+
+        {/* Status */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select {...register('status')} className="input-field">
+            <option value="open">Open — share with the community</option>
+            <option value="draft">Draft — only you can see it</option>
           </select>
         </div>
 

@@ -61,6 +61,8 @@ const TaskBoard = ({ project }) => {
   });
 
   const serverTasks = tasksData?.data?.data || [];
+  // Stable dependency: only re-sync when the fetched task list actually changes
+  const serverTaskKey = serverTasks.map((t) => t._id + ':' + (t.status || '') + ':' + (t.title || '')).join('|');
 
   // Keep localTasks in sync with server data (merge by id so optimistic
   // reorders aren't clobbered by stale intermediate refetches).
@@ -70,7 +72,8 @@ const TaskBoard = ({ project }) => {
       const merged = serverTasks.map((t) => map.get(t._id) || t);
       return merged;
     });
-  }, [serverTasks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverTaskKey]);
 
   const invalidate = () => {
     queryClient.invalidateQueries(['project-tasks', project._id]);

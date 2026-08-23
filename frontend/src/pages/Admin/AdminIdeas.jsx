@@ -8,6 +8,8 @@ import adminApi from '../../api/admin.api';
 const AdminIdeas = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedIdeas, setSelectedIdeas] = useState([]);
+  const [bulkAction, setBulkAction] = useState('');
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -30,6 +32,37 @@ const AdminIdeas = () => {
     },
     onError: () => toast.error('Failed to moderate idea'),
   });
+
+  const bulkMutation = useMutation({
+    mutationFn: ({ ids, action }) => adminApi.bulkIdeaAction(ids, action),
+    onSuccess: (_, { action }) => {
+      invalidate();
+      toast.success(`Bulk ${action} completed`);
+      setSelectedIdeas([]);
+      setBulkAction('');
+    },
+    onError: () => toast.error('Bulk action failed'),
+  });
+
+  const toggleSelectAll = () => {
+    if (selectedIdeas.length === ideas.length) {
+      setSelectedIdeas([]);
+    } else {
+      setSelectedIdeas(ideas.map((i) => i._id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIdeas((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkAction = () => {
+    if (!bulkAction || selectedIdeas.length === 0) return;
+    if (!window.confirm(`Apply "${bulkAction}" to ${selectedIdeas.length} idea(s)?`)) return;
+    bulkMutation.mutate({ ids: selectedIdeas, action: bulkAction });
+  };
 
   return (
     <div>
@@ -64,10 +97,43 @@ const AdminIdeas = () => {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          {selectedIdeas.length > 0 && (
+            <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-yellow-800">
+                {selectedIdeas.length} idea(s) selected
+              </span>
+              <div className="flex items-center gap-2">
+                <select
+                  className="input-field py-1.5 text-sm w-auto"
+                  value={bulkAction}
+                  onChange={(e) => setBulkAction(e.target.value)}
+                >
+                  <option value="">Bulk action...</option>
+                  <option value="archive">Archive</option>
+                  <option value="delete">Delete</option>
+                </select>
+                <button
+                  onClick={handleBulkAction}
+                  disabled={!bulkAction}
+                  className="btn-primary text-sm px-3 py-1.5 disabled:opacity-50"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                  <th className="px-4 py-3 font-medium w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIdeas.length === ideas.length && ideas.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600"
+                    />
+                  </th>
                   <th className="px-4 py-3 font-medium">Idea</th>
                   <th className="px-4 py-3 font-medium">Author</th>
                   <th className="px-4 py-3 font-medium">Category</th>
@@ -78,6 +144,14 @@ const AdminIdeas = () => {
               <tbody className="divide-y divide-gray-50">
                 {ideas.map((idea) => (
                   <tr key={idea._id} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIdeas.includes(idea._id)}
+                        onChange={() => toggleSelect(idea._id)}
+                        className="w-4 h-4 rounded border-gray-300 text-primary-600"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium line-clamp-1 max-w-[280px]">{idea.title}</p>
                       <p className="text-xs text-gray-500 line-clamp-1 max-w-[280px]">{idea.description}</p>
@@ -127,7 +201,7 @@ const AdminIdeas = () => {
                 ))}
                 {ideas.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                       No ideas found.
                     </td>
                   </tr>

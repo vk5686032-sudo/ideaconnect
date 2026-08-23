@@ -46,9 +46,23 @@ A full-stack **MERN** application where students and innovators can **share idea
 - **Content moderation** — archive/delete ideas & projects
 - Analytics (ideas by category, projects by status, top users)
 
+### 🎓 Mentor System
+- Approved mentors review ideas with ratings (1–5) + written feedback
+- Mentor directory with search, mentorship requests (accept opens a direct chat)
+- Incoming-request management on the dashboard
+
+### ⭐ Reputation
+- Points earned from community activity: likes received (+2), comments (+3), replies (+1), mentor reviews given (+5), completed tasks (+10)
+- Self-actions never count; toggles are fully symmetric
+
+### 🚩 Content Reporting
+- Report ideas, projects, comments, or users with categorized reasons
+- Reports land in the admin panel with one-click archive/delete resolution
+
 ### 🔐 Security & UX
-- JWT authentication with role-based access control
-- Banned accounts are blocked from all routes
+- JWT authentication with short-lived access tokens + rotating refresh tokens (multi-device, revocable)
+- Role-based access control, banned accounts blocked everywhere
+- Email verification + password reset flows (verification currently bypassed in dev — see `middlewares/auth.js`)
 - Rate limiting, Helmet security headers, CORS allow-listing
 - Fully **responsive** — sidebar drawer on mobile, single-pane chat toggle
 - Toast notifications, loading states, optimistic UI
@@ -152,7 +166,9 @@ Open **http://localhost:5173** 🎉
 
 ## 📚 API Overview
 
-All endpoints are prefixed `/api` and require a `Bearer` token except auth & health.
+All endpoints live under **`/api/v1`** (an unversioned `/api/*` alias is kept for the current web build). Interactive docs: **`/api/v1/docs`** (Swagger UI) · raw spec: `/api/v1/docs.json`.
+
+Authenticated requests expect a Bearer access token (~15 min). Clients silently renew it via `POST /auth/refresh` using the rotating refresh token returned at login (~30 days, hashed server-side, max 5 devices).
 
 | Route Group | Endpoints | Auth |
 |---|---|---|
@@ -234,14 +250,24 @@ npm run preview   # preview production build
 - [x] Auth, profiles, dashboard
 - [x] Ideas, comments, likes, bookmarks, search
 - [x] Projects, team invites, tasks, milestones
-- [x] Real-time chat (edit/delete/reactions/attachments)
+- [x] Real-time chat (edit/delete/reactions/attachments/read receipts/presence)
 - [x] AI idea analysis
-- [x] Notifications (realtime-ready)
-- [x] Admin panel & moderation
-- [ ] Automated test suite
+- [x] Notifications (realtime + Expo push for mobile)
+- [x] Admin panel & moderation (incl. content reports)
+- [x] Mentor system (reviews, requests, directory)
+- [x] Reputation system
+- [x] Refresh-token sessions, API versioning (`/api/v1`), Swagger docs
+- [~] Automated test suite (basic smoke tests — needs expansion)
 - [ ] Docker / deployment config
+- [ ] React Native (Expo) mobile app
 - [ ] Google OAuth login
 - [ ] Production SMTP / Cloudinary / OpenAI wiring
+- [ ] Re-enable email verification enforcement (bypassed for dev — see `backend/src/middlewares/auth.js`)
+
+### 📱 Mobile app notes
+The backend is React-Native-ready: REST under `/api/v1`, Socket.io realtime,
+Expo push notifications (`PUT /users/me/push-tokens` registers a device),
+and a Swagger spec at `/api/v1/docs` to build the client against.
 
 ---
 

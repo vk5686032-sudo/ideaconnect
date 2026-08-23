@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   MessageSquare, Send, Paperclip, Smile, ArrowLeft, Loader2, FileText, X,
   CornerUpLeft, SmilePlus, Pencil, Trash2, MoreHorizontal,
-  Users, UserPlus, UserMinus, Shield, LogOut,
+  Users, UserPlus, UserMinus, Shield, LogOut, Check,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
@@ -36,7 +36,8 @@ const Chat = () => {
   const projectId = searchParams.get('projectId');
   const backTo = fromProject && projectId ? `/projects/${projectId}` : '/chat';
   const { user } = useAuthStore();
-  const socket = useSocket();
+  // Ensures the socket is connected while the chat page is open
+  useSocket();
 
   const [message, setMessage] = useState('');
   const [typingUsers, setTypingUsers] = useState([]);
@@ -59,6 +60,9 @@ const Chat = () => {
   const [memberSearch, setMemberSearch] = useState('');
   const [memberAddOpen, setMemberAddOpen] = useState(false);
   const [addSearch, setAddSearch] = useState('');
+
+  // Live presence: ids of currently-connected users (from user:online/offline)
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
 
   const { data: chatsData } = useQuery({
     queryKey: ['chats'],
@@ -91,7 +95,6 @@ const Chat = () => {
   const isTeam = activeChat?.type === 'group';
   const members = activeChat?.participants || [];
   const isAdmin = activeChat?.admins?.some((a) => a._id === user?._id || a === user?._id) || false;
-  const isCreator = activeChat?.creator?._id === user?._id || activeChat?.creator === user?._id;
 
   // Reset local state when chat changes
   useEffect(() => {
@@ -201,6 +204,51 @@ const Chat = () => {
       setTypingUsers((prev) => prev.filter((u) => u.userId !== userId));
     };
 
+    // Read receipts: a peer read this chat's messages
+    const onMessagesRead = ({ chatId: readChatId, userId }) => {
+      if (readChatId !== id || userId === user?._id) return;
+      const applyRead = (m) => ({
+        ...m,
+        readBy: [...(m.readBy || []), { user: userId, readAt: new Date().toISOString() }],
+      });
+      setLocalMessages((prev) => {
+        if (prev.length === 0) return prev;
+        return prev.map((m) =>
+          m.sender?._id === user?._id && !(m.readBy || []).some((r) => (r.user?._id || r.user) === userId)
+            ? applyRead(m)
+            : m
+        );
+      });
+      queryClient.setQueryData(['messages', id], (old) => {
+        if (!old?.data?.data?.length) return old;
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            data: old.data.data.map((m) =>
+              m.sender?._id === user?._id && !(m.readBy || []).some((r) => (r.user?._id || r.user) === userId)
+                ? applyRead(m)
+                : m
+            ),
+          },
+        };
+      });
+    };
+
+    // Global presence
+    const onUserOnline = (userId) => {
+      if (!userId) return;
+      setOnlineUsers((prev) => new Set(prev).add(userId));
+    };
+    const onUserOffline = (userId) => {
+      if (!userId) return;
+      setOnlineUsers((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    };
+
     s.on('message:received', onMessageReceived);
     s.on('message:edited', onMessageEdited);
     s.on('message:deleted', onMessageDeleted);
@@ -208,6 +256,9 @@ const Chat = () => {
     s.on('message:reacted', onMessageReacted);
     s.on('typing:user', onTypingStart);
     s.on('typing:stopped', onTypingStop);
+    s.on('messages:read', onMessagesRead);
+    s.on('user:online', onUserOnline);
+    s.on('user:offline', onUserOffline);
 
     return () => {
       s.emit('chat:leave', id);
@@ -218,14 +269,18 @@ const Chat = () => {
       s.off('message:reacted', onMessageReacted);
       s.off('typing:user', onTypingStart);
       s.off('typing:stopped', onTypingStop);
+      s.off('messages:read', onMessagesRead);
+      s.off('user:online', onUserOnline);
+      s.off('user:offline', onUserOffline);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?._id, serverMessages.length, queryClient]);
 
-  // Scroll to bottom
+  // Scroll to bottom when the message count changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverMessages.length, localMessages.length, id]);
 
   // Send via socket (supports reply)
   const handleSend = () => {
@@ -423,6 +478,20 @@ const Chat = () => {
   const isDeleted = (msg) => msg.isDeleted;
   const isEdited = (msg) => msg.isEdited;
 
+  // Read receipt: has anyone other than the sender read this message?
+  const isReadByOthers = (msg) =>
+    (msg.readBy || []).some((r) => {
+      const rid = r.user?._id || r.user;
+      return rid && rid !== user?._id;
+    });
+  const isOnline = (userId) => userId && onlineUsers.has(userId);
+
+  // For a direct chat, the "other" participant id (for presence display)
+  const getOtherParticipantId = (chat) =>
+    chat?.type === 'direct'
+      ? chat.participants?.find((p) => p._id && p._id !== user?._id)?._id
+      : null;
+
   return (
     <div className="h-[calc(100vh-160px)] lg:h-[calc(100vh-120px)] flex bg-white rounded-xl overflow-hidden border border-gray-200">
       {/* Chats Sidebar — hidden entirely in project mode (privacy) */}
@@ -445,29 +514,37 @@ const Chat = () => {
           {chats.length === 0 && (
             <p className="text-sm text-gray-500 p-4 text-center">No conversations yet</p>
           )}
-          {chats.map((chat) => (
-            <button
-              key={chat._id}
-              onClick={() => navigate(`/chat/${chat._id}`)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                chat._id === id ? 'bg-primary-50 border-l-4 border-primary-600' : ''
-              }`}
-            >
-              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="w-5 h-5 text-primary-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{getChatName(chat)}</p>
-                <p className="text-xs text-gray-500 truncate">
-                  {chat.lastMessage
-                    ? chat.lastMessage.isDeleted
-                      ? 'This message was deleted'
-                      : chat.lastMessage.content || (chat.lastMessage.attachments?.length ? '📎 Attachment' : '')
-                    : 'Start a conversation'}
-                </p>
-              </div>
-            </button>
-          ))}
+          {chats.map((chat) => {
+            const otherId = getOtherParticipantId(chat);
+            return (
+              <button
+                key={chat._id}
+                onClick={() => navigate(`/chat/${chat._id}`)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                  chat._id === id ? 'bg-primary-50 border-l-4 border-primary-600' : ''
+                }`}
+              >
+                <div className="relative w-10 h-10 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-primary-600" />
+                  </div>
+                  {chat.type === 'direct' && isOnline(otherId) && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-white" title="Online" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{getChatName(chat)}</p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {chat.lastMessage
+                      ? chat.lastMessage.isDeleted
+                        ? 'This message was deleted'
+                        : chat.lastMessage.content || (chat.lastMessage.attachments?.length ? '📎 Attachment' : '')
+                      : 'Start a conversation'}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -491,11 +568,18 @@ const Chat = () => {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold truncate">{getChatName(activeChat)}</h3>
+              <h3 className="font-semibold truncate flex items-center gap-1.5">
+                {getChatName(activeChat)}
+                {!isTeam && isOnline(getOtherParticipantId(activeChat)) && (
+                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block" title="Online" />
+                )}
+              </h3>
               <p className="text-xs text-gray-500">
                 {isTeam
                   ? `${members.length} member${members.length === 1 ? '' : 's'}`
-                  : 'Direct message'}
+                  : isOnline(getOtherParticipantId(activeChat))
+                    ? 'Online now'
+                    : 'Direct message'}
               </p>
             </div>
             {isTeam && (
@@ -612,10 +696,19 @@ const Chat = () => {
                       </>
                     )}
 
-                    {/* Meta row: time + edited */}
-                    <p className="text-xs mt-1 opacity-60">
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {isEdited(msg) && !deleted && <span> · edited</span>}
+                    {/* Meta row: time + edited + read receipt */}
+                    <p className={`text-xs mt-1 opacity-60 flex items-center gap-1 ${own ? 'justify-end' : ''}`}>
+                      <span>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {isEdited(msg) && !deleted && ' · edited'}
+                      </span>
+                      {own && !deleted && (
+                        isReadByOthers(msg) ? (
+                          <Check className="w-3.5 h-3.5 text-sky-300" aria-label="Read" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5 opacity-50" aria-label="Sent" />
+                        )
+                      )}
                     </p>
 
                     {/* Reactions */}
@@ -893,11 +986,16 @@ const Chat = () => {
                   const mIsCreator = activeChat?.creator?._id === m._id || activeChat?.creator === m._id;
                   return (
                     <div key={m._id} className="flex items-center gap-3 px-5 py-3">
-                      <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                        {m.avatar?.url ? (
-                          <img src={m.avatar.url} alt="" className="w-full h-full rounded-full" />
-                        ) : (
-                          <span className="text-xs font-medium text-gray-600">{m.name?.[0]?.toUpperCase()}</span>
+                      <div className="relative w-9 h-9 flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center">
+                          {m.avatar?.url ? (
+                            <img src={m.avatar.url} alt="" className="w-full h-full rounded-full" />
+                          ) : (
+                            <span className="text-xs font-medium text-gray-600">{m.name?.[0]?.toUpperCase()}</span>
+                          )}
+                        </div>
+                        {!isMe && isOnline(m._id) && (
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" title="Online" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">

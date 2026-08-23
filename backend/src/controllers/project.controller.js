@@ -100,6 +100,26 @@ exports.getProjectById = async (req, res, next) => {
       return errorResponse(res, 404, 'Project not found');
     }
 
+    // Visibility: private projects are only visible to the owner,
+    // admins, and project members
+    if (project.visibility === 'private') {
+      const isOwner =
+        req.user &&
+        (project.owner._id
+          ? project.owner._id.toString() === req.user._id.toString()
+          : project.owner.toString() === req.user._id.toString());
+      const isAdmin = req.user?.role === 'admin';
+      const isMember =
+        req.user &&
+        (project.members || []).some(
+          (m) => m.user && m.user._id.toString() === req.user._id.toString()
+        );
+
+      if (!isOwner && !isAdmin && !isMember) {
+        return errorResponse(res, 404, 'Project not found');
+      }
+    }
+
     successResponse(res, 200, 'Project retrieved successfully', project);
   } catch (error) {
     next(error);
@@ -399,6 +419,17 @@ exports.handleInvitation = async (req, res, next) => {
 
     if (invitation.recipient.toString() !== req.user._id.toString()) {
       return errorResponse(res, 403, 'Not authorized');
+    }
+
+    if (invitation.status !== 'pending') {
+      return errorResponse(res, 400, 'This invitation has already been handled');
+    }
+
+    // Lazy expiry — a stale pending invitation expires on touch
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      invitation.status = 'expired';
+      await invitation.save();
+      return errorResponse(res, 400, 'This invitation has expired');
     }
 
     if (action === 'accept') {

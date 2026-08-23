@@ -121,6 +121,22 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpire: Date,
     verificationToken: String,
     verificationExpire: Date,
+    // Active refresh tokens (hashed). Capped to the 5 most recent devices.
+    refreshTokens: [
+      {
+        tokenHash: { type: String, required: true },
+        expiresAt: { type: Date, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    // Expo push tokens for mobile notifications (max 5 devices)
+    pushTokens: [
+      {
+        token: { type: String, required: true },
+        platform: { type: String, enum: ['ios', 'android', 'web'], default: 'android' },
+        addedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

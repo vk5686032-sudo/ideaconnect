@@ -2,6 +2,8 @@ const Comment = require('../models/Comment');
 const Idea = require('../models/Idea');
 const { successResponse, errorResponse } = require('../utils/response');
 const notificationService = require('../services/notification.service');
+const reputationService = require('../services/reputation.service');
+const { resolveMentionedUsers } = require('../utils/mentions');
 
 // Create comment
 exports.createComment = async (req, res, next) => {
@@ -14,14 +16,17 @@ exports.createComment = async (req, res, next) => {
       return errorResponse(res, 404, 'Idea not found');
     }
 
+    const isReply = !!parentId;
+    let parentComment = null;
+
     const commentData = {
       content,
       author: req.user._id,
       idea: ideaId,
     };
 
-    if (parentId) {
-      const parentComment = await Comment.findById(parentId);
+    if (isReply) {
+      parentComment = await Comment.findById(parentId);
       if (!parentComment) {
         return errorResponse(res, 404, 'Parent comment not found');
       }
@@ -31,7 +36,7 @@ exports.createComment = async (req, res, next) => {
     const comment = await Comment.create(commentData);
 
     // Add to parent's replies if it's a reply
-    if (parentId) {
+    if (isReply) {
       await Comment.findByIdAndUpdate(parentId, {
         $push: { replies: comment._id },
       });
@@ -40,12 +45,16 @@ exports.createComment = async (req, res, next) => {
     // Update comments count
     await Idea.findByIdAndUpdate(ideaId, { $inc: { commentsCount: 1 } });
 
+    // Track who was already notified so mentions don't double-notify
+    let notifiedRecipient = null;
+
     // Send notification
-    if (parentId) {
-      const parentComment = await Comment.findById(parentId);
+    if (isReply) {
       if (parentComment && parentComment.author.toString() !== req.user._id.toString()) {
+        notifiedRecipient = parentComment.author.toString();
+        await reputationService.award(notifiedRecipient, reputationService.POINTS.REPLY_RECEIVED);
         await notificationService.create({
-          recipient: parentComment.author,
+          recipient: notifiedRecipient,
           sender: req.user._id,
           type: 'reply',
           title: 'New reply to your comment',
@@ -56,12 +65,31 @@ exports.createComment = async (req, res, next) => {
         });
       }
     } else if (idea.author.toString() !== req.user._id.toString()) {
+      notifiedRecipient = idea.author.toString();
+      await reputationService.award(notifiedRecipient, reputationService.POINTS.COMMENT_RECEIVED);
       await notificationService.create({
-        recipient: idea.author,
+        recipient: notifiedRecipient,
         sender: req.user._id,
         type: 'comment',
         title: 'New comment on your idea',
         message: `${req.user.name} commented on "${idea.title}"`,
+        relatedIdea: ideaId,
+        relatedComment: comment._id,
+        actionUrl: `/ideas/${ideaId}#comment-${comment._id}`,
+      });
+    }
+
+    // Mentions — notify referenced users (skip self + already-notified recipient)
+    const mentionedUsers = await resolveMentionedUsers(content, {
+      excludeIds: [req.user._id.toString(), ...(notifiedRecipient ? [notifiedRecipient] : [])],
+    });
+    for (const mentioned of mentionedUsers) {
+      await notificationService.create({
+        recipient: mentioned._id,
+        sender: req.user._id,
+        type: 'mention',
+        title: 'You were mentioned',
+        message: `${req.user.name} mentioned you in a comment on "${idea.title}"`,
         relatedIdea: ideaId,
         relatedComment: comment._id,
         actionUrl: `/ideas/${ideaId}#comment-${comment._id}`,

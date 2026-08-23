@@ -6,7 +6,6 @@ export const projectApi = {
   create: (data) => api.post('/projects', data),
   update: (id, data) => api.put(`/projects/${id}`, data),
   delete: (id) => api.delete(`/projects/${id}`),
-  inviteMember: (id, data) => api.post(`/projects/${id}/invite`, data),
   addMember: (id, data) => api.post(`/projects/${id}/members`, data),
   removeMember: (id, userId) => api.delete(`/projects/${id}/members/${userId}`),
   updateMemberRole: (id, userId, role) => api.put(`/projects/${id}/members/${userId}/role`, { role }),

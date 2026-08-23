@@ -6,11 +6,17 @@ import AuthLayout from '../layouts/AuthLayout';
 import Home from '../pages/Home/Home';
 import Login from '../pages/Login/Login';
 import Register from '../pages/Register/Register';
+import ForgotPassword from '../pages/Auth/ForgotPassword';
+import ResetPassword from '../pages/Auth/ResetPassword';
+import VerifyEmail from '../pages/Auth/VerifyEmail';
 import Dashboard from '../pages/Dashboard/Dashboard';
 import Profile from '../pages/Profile/Profile';
+import Settings from '../pages/Settings/Settings';
 import Ideas from '../pages/Ideas/Ideas';
 import IdeaDetail from '../pages/Ideas/IdeaDetail';
 import CreateIdea from '../pages/Ideas/CreateIdea';
+import Bookmarks from '../pages/Ideas/Bookmarks';
+import Mentors from '../pages/Mentors/Mentors';
 import Projects from '../pages/Projects/Projects';
 import ProjectDetail from '../pages/Projects/ProjectDetail';
 import CreateProject from '../pages/Projects/CreateProject';
@@ -52,6 +58,26 @@ const router = createBrowserRouter([
             <Profile />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'bookmarks',
+        element: (
+          <ProtectedRoute>
+            <Bookmarks />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'mentors',
+        element: <Mentors />,
       },
       {
         path: 'notifications',
@@ -155,6 +181,10 @@ const router = createBrowserRouter([
           </GuestRoute>
         ),
       },
+      { path: 'forgot-password', element: <ForgotPassword /> },
+      { path: 'reset-password/:token', element: <ResetPassword /> },
+      { path: 'verify-email/:token', element: <VerifyEmail /> },
+      { path: 'verify-email', element: <VerifyEmail /> },
     ],
   },
   { path: '*', element: <NotFound /> },

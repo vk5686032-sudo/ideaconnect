@@ -1,7 +1,10 @@
 const Message = require('../models/Message');
 const Chat = require('../models/Chat');
 const notificationService = require('../services/notification.service');
+const { resolveMentionedUsers } = require('../utils/mentions');
 
+// userId -> Set<socketId>. Multi-tab/multi-device safe: a user is only
+// "offline" after their last socket disconnects.
 const activeUsers = new Map();
 
 module.exports = (io) => {
@@ -11,8 +14,18 @@ module.exports = (io) => {
     // Join user to their personal room
     socket.on('join', (userId) => {
       socket.join(`user:${userId}`);
-      activeUsers.set(userId, socket.id);
-      io.emit('user:online', userId);
+
+      if (!activeUsers.has(userId)) {
+        activeUsers.set(userId, new Set());
+      }
+      const isFirstConnection = activeUsers.get(userId).size === 0;
+      activeUsers.get(userId).add(socket.id);
+
+      // Only broadcast online on the first connection for this user
+      if (isFirstConnection) {
+        socket.userId = userId;
+        io.emit('user:online', userId);
+      }
     });
 
     // Join a chat room
@@ -57,6 +70,31 @@ module.exports = (io) => {
             });
           }
         });
+
+        // Mentions — notify referenced chat members (never the sender)
+        const sender = chat.participants.find(
+          (p) => p._id.toString() === senderId.toString()
+        );
+        const mentionedUsers = await resolveMentionedUsers(content || '', {
+          excludeIds: [senderId],
+        });
+        for (const mentioned of mentionedUsers) {
+          const isMember = chat.participants.some(
+            (p) => p._id.toString() === mentioned._id.toString()
+          );
+          if (!isMember) continue;
+
+          await notificationService.create({
+            recipient: mentioned._id,
+            sender: senderId,
+            type: 'mention',
+            title: 'You were mentioned',
+            message: `${sender ? sender.name : 'Someone'} mentioned you in ${
+              chat.type === 'group' ? `"${chat.name || 'a team chat'}"` : 'a conversation'
+            }`,
+            actionUrl: `/chat/${chatId}`,
+          });
+        }
       } catch (error) {
         console.error('Message error:', error);
       }
@@ -86,12 +124,17 @@ module.exports = (io) => {
     // Disconnect
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.id}`);
-      for (const [userId, socketId] of activeUsers) {
-        if (socketId === socket.id) {
-          activeUsers.delete(userId);
-          io.emit('user:offline', userId);
-          break;
-        }
+
+      const userId = socket.userId;
+      if (!userId) return;
+
+      const sockets = activeUsers.get(userId);
+      if (!sockets) return;
+
+      sockets.delete(socket.id);
+      if (sockets.size === 0) {
+        activeUsers.delete(userId);
+        io.emit('user:offline', userId);
       }
     });
   });
