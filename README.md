@@ -269,6 +269,11 @@ The backend is React-Native-ready: REST under `/api/v1`, Socket.io realtime,
 Expo push notifications (`PUT /users/me/push-tokens` registers a device),
 and a Swagger spec at `/api/v1/docs` to build the client against.
 
+**Planning the mobile app?** Full documentation suite lives in [`docs/mobile/`](./docs/mobile/):
+[PRD](./docs/mobile/prd.md) · [Phases](./docs/mobile/phases.md) · [Tech Stack](./docs/mobile/tech-stack.md) ·
+[Folder Structure](./docs/mobile/folder-structure.md) · [API Reference](./docs/mobile/api-reference.md) ·
+[Design Spec](./docs/mobile/design-spec.md) · [Setup Guide](./docs/mobile/setup-guide.md)
+
 ---
 
 ## 📝 License
