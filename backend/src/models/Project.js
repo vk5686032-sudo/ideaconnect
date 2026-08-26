@@ -128,4 +128,47 @@ projectSchema.index({
   technologies: 'text',
 });
 
+// Hard invariant: a user can appear in members at most once. Controller
+// guards can be bypassed by stale processes or future call sites — this
+// makes duplicate member rows impossible to persist, full stop.
+function dedupeMembers(members) {
+  const seen = new Set();
+  return (members || []).filter((m) => {
+    if (!m || !m.user) return false;
+    const key = String(m.user);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+projectSchema.pre('save', function () {
+  if (this.isModified('members')) {
+    this.members = dedupeMembers(this.members);
+  }
+});
+
+projectSchema.pre('findOneAndUpdate', async function () {
+  const update = this.getUpdate() || {};
+  const pushedMember = update.$push && update.$push.members;
+  if (!pushedMember) return;
+
+  const doc = await this.model.findOne(this.getQuery(), { members: 1 });
+  if (!doc) return;
+
+  const targetId = String(pushedMember.user ?? '');
+  const alreadyMember = (doc.members || []).some(
+    (m) => m.user && String(m.user) === targetId
+  );
+
+  if (alreadyMember) {
+    const clone = { ...update };
+    const restPush = { ...update.$push };
+    delete restPush.members;
+    delete clone.$push;
+    if (Object.keys(restPush).length > 0) clone.$push = restPush;
+    this.setUpdate(clone);
+  }
+});
+
 module.exports = mongoose.model('Project', projectSchema);

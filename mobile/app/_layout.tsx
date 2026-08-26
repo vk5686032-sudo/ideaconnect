@@ -211,6 +211,9 @@ export default function RootLayout() {
             <Stack.Screen name="chat" options={{ headerShown: false }} />
             <Stack.Screen name="users" options={{ headerShown: false }} />
             <Stack.Screen name="notifications" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ headerShown: false }} />
+            <Stack.Screen name="mentors" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
           </Stack>
           <Toast config={toastConfig} topOffset={48} />
         </View>

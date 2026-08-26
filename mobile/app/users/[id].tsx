@@ -10,9 +10,11 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
+import { PromptModal } from '@/components/PromptModal';
 import { chatApi } from '@/api/chat.api';
+import { mentorApi } from '@/api/mentor.api';
 import { userApi } from '@/api/user.api';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useCurrentUser } from '@/hooks/useAuth';
 
 export default function UserProfileScreen() {
@@ -21,6 +23,11 @@ export default function UserProfileScreen() {
   const currentUser = useCurrentUser();
   const userId = currentUser?._id || currentUser?.id || '';
   const [opening, setOpening] = useState(false);
+  const [mentorPromptVisible, setMentorPromptVisible] = useState(false);
+
+  const sendMentorRequest = useMutation({
+    mutationFn: (message: string) => mentorApi.sendMentorRequest(id, message),
+  });
 
   const userQuery = useQuery({
     queryKey: ['users', id],
@@ -33,6 +40,27 @@ export default function UserProfileScreen() {
 
   const user = userQuery.data;
   const isSelf = !!user && (user._id || user.id) === userId;
+  const canRequestMentorship =
+    !!user &&
+    !isSelf &&
+    ((user.role === 'mentor' && user.isMentorApproved !== false) ||
+      user.role === 'admin');
+
+  const submitMentorRequest = async (message: string) => {
+    setMentorPromptVisible(false);
+    try {
+      await sendMentorRequest.mutateAsync(message);
+      Toast.show({ type: 'success', text1: 'Mentorship request sent' });
+    } catch (error) {
+      let message = 'Failed to send request.';
+      if (isAxiosError(error)) {
+        const apiMessage = (error.response?.data as { message?: string } | undefined)
+          ?.message;
+        if (apiMessage) message = apiMessage;
+      }
+      Toast.show({ type: 'error', text1: message });
+    }
+  };
 
   const startChat = async () => {
     if (!user) return;
@@ -111,14 +139,34 @@ export default function UserProfileScreen() {
         ) : null}
 
         {!isSelf ? (
-          <Button
-            title={opening ? 'Opening chat…' : 'Message'}
-            className="mt-6"
-            loading={opening}
-            onPress={() => void startChat()}
-          />
+          <View className="mt-6 gap-2">
+            <Button
+              title={opening ? 'Opening chat…' : 'Message'}
+              loading={opening}
+              onPress={() => void startChat()}
+            />
+            {canRequestMentorship ? (
+              <Button
+                title={
+                  sendMentorRequest.isPending ? 'Sending…' : 'Request Mentorship'
+                }
+                variant="soft"
+                onPress={() => setMentorPromptVisible(true)}
+              />
+            ) : null}
+          </View>
         ) : null}
       </View>
+
+      <PromptModal
+        visible={mentorPromptVisible}
+        title="Request mentorship"
+        placeholder="What would you like guidance on?"
+        multiline
+        submitLabel="Send request"
+        onClose={() => setMentorPromptVisible(false)}
+        onSubmit={(value) => void submitMentorRequest(value)}
+      />
     </>
   );
 }
