@@ -1,4 +1,6 @@
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const config = require('./env');
 
 let io;
 
@@ -12,6 +14,21 @@ const initSocket = (server) => {
       methods: ['GET', 'POST'],
       credentials: true,
     },
+  });
+
+  // JWT handshake authentication — sockets without a valid token are rejected
+  io.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) {
+        return next(new Error('Authentication required'));
+      }
+      const decoded = jwt.verify(token, config.jwtSecret);
+      socket.userId = decoded.id;
+      next();
+    } catch (error) {
+      next(new Error('Invalid or expired token'));
+    }
   });
 
   require('../sockets/chat.socket')(io);

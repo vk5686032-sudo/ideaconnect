@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/store/authSlice';
 import {
   clearTokens,
   getAccessToken,
@@ -6,7 +5,7 @@ import {
   setTokens,
 } from '@/api/tokenStorage';
 import { API_URL } from '@/utils/constants';
-import type { ApiSuccess, AuthPayload } from '@/types/models';
+import type { ApiSuccess, AuthPayload, User } from '@/types/models';
 import axios from 'axios';
 
 const AUTH_ENDPOINTS = [
@@ -16,6 +15,18 @@ const AUTH_ENDPOINTS = [
   '/auth/resend-verification',
   '/auth/refresh',
 ];
+
+export type AuthClientEvent =
+  | { type: 'user-refreshed'; user: User }
+  | { type: 'session-expired' };
+
+type AuthClientListener = (event: AuthClientEvent) => void;
+
+let authClientListener: AuthClientListener | null = null;
+
+export function setAuthClientListener(listener: AuthClientListener | null): void {
+  authClientListener = listener;
+}
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -37,7 +48,7 @@ api.interceptors.request.use(
 
 let refreshPromise: Promise<string | null> | null = null;
 
-function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessTokenNow(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       const refreshToken = await getRefreshToken();
@@ -56,7 +67,7 @@ function refreshAccessToken(): Promise<string | null> {
         }
         await setTokens(data.token, data.refreshToken);
         if (data.user) {
-          useAuthStore.getState().updateUser(data.user);
+          authClientListener?.({ type: 'user-refreshed', user: data.user });
         }
         return data.token;
       } catch {
@@ -69,9 +80,16 @@ function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
+function refreshAccessToken(): Promise<string | null> {
+  return refreshAccessTokenNow();
+}
+
 async function hardLogout(): Promise<void> {
-  await clearTokens();
-  useAuthStore.getState().logout();
+  if (!authClientListener) {
+    await clearTokens();
+  } else {
+    authClientListener({ type: 'session-expired' });
+  }
 }
 
 interface RetriableRequestConfig {

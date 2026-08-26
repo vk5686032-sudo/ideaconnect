@@ -435,21 +435,37 @@ exports.handleInvitation = async (req, res, next) => {
     if (action === 'accept') {
       invitation.status = 'accepted';
 
-      // Add to project members
-      await Project.findByIdAndUpdate(invitation.relatedProject, {
-        $push: {
-          members: {
-            user: req.user._id,
-            role: invitation.role,
-            status: 'active',
-          },
-        },
-      });
+      // For join-REQUESTS the acceptor is the owner and the person being
+      // added is invitation.sender. For direct INVITES the acceptor IS the
+      // recipient being added.
+      const isJoinRequest = invitation.type === 'team-request';
+      const userToAdd = isJoinRequest ? invitation.sender : req.user._id;
 
-      // Add to user's projects
-      await User.findByIdAndUpdate(req.user._id, {
-        $push: { projectsJoined: invitation.relatedProject },
-      });
+      // Skip if already a member — guards duplicates
+      const targetProject = await Project.findById(invitation.relatedProject);
+      const alreadyMember =
+        targetProject &&
+        (targetProject.members || []).some(
+          (m) =>
+            m.user && m.user.toString() === userToAdd.toString()
+        );
+
+      if (targetProject && !alreadyMember) {
+        await Project.findByIdAndUpdate(invitation.relatedProject, {
+          $push: {
+            members: {
+              user: userToAdd,
+              role: invitation.role,
+              status: 'active',
+            },
+          },
+        });
+
+        // Add to the new member's projects list
+        await User.findByIdAndUpdate(userToAdd, {
+          $push: { projectsJoined: invitation.relatedProject },
+        });
+      }
     } else {
       invitation.status = 'rejected';
     }

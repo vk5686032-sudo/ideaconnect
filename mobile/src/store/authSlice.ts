@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { clearTokens, hasRefreshToken, setTokens } from '@/api/tokenStorage';
 import { authApi } from '@/api/auth.api';
+import { setAuthClientListener } from '@/api/client';
 import type { AuthPayload, User } from '@/types/models';
 
 export type AuthStatus =
@@ -69,4 +70,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
-export default useAuthStore;
+setAuthClientListener((event) => {
+  const store = useAuthStore.getState();
+  if (event.type === 'user-refreshed') {
+    store.updateUser(event.user);
+  } else {
+    store.logout();
+  }
+});

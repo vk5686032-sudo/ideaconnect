@@ -11,8 +11,11 @@ module.exports = (io) => {
   io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
-    // Join user to their personal room
-    socket.on('join', (userId) => {
+    // Join user to their personal room (identity from verified handshake only)
+    socket.on('join', () => {
+      const userId = socket.userId;
+      if (!userId) return;
+
       socket.join(`user:${userId}`);
 
       if (!activeUsers.has(userId)) {
@@ -21,9 +24,15 @@ module.exports = (io) => {
       const isFirstConnection = activeUsers.get(userId).size === 0;
       activeUsers.get(userId).add(socket.id);
 
+      // Reply with who is currently online so late joiners render dots
+      // without needing to have witnessed past online/offline transitions.
+      socket.emit(
+        'presence:snapshot',
+        Array.from(activeUsers.keys())
+      );
+
       // Only broadcast online on the first connection for this user
       if (isFirstConnection) {
-        socket.userId = userId;
         io.emit('user:online', userId);
       }
     });
@@ -38,15 +47,22 @@ module.exports = (io) => {
       socket.leave(`chat:${chatId}`);
     });
 
-    // Send message
-    socket.on('message:send', async (data) => {
+    // Send message (sender identity comes from the authenticated socket,
+    // never from client-supplied data). Acknowledges with the saved message
+    // so the sender can render it even if the room broadcast is missed.
+    socket.on('message:send', async (data, callback) => {
       try {
-        const { chatId, content, senderId, replyTo } = data;
+        const senderId = socket.userId;
+        if (!senderId) return;
+
+        const { chatId, content, replyTo } = data;
+
+        if (!chatId || typeof content !== 'string' || !content.trim()) return;
 
         const message = await Message.create({
           chat: chatId,
           sender: senderId,
-          content,
+          content: content.trim(),
           replyTo: replyTo || null,
           readBy: [{ user: senderId }],
         });
@@ -58,6 +74,10 @@ module.exports = (io) => {
         await Chat.findByIdAndUpdate(chatId, { lastMessage: message._id });
 
         io.to(`chat:${chatId}`).emit('message:received', message);
+
+        if (typeof callback === 'function') {
+          callback({ ok: true, message });
+        }
 
         // Notify participants who are not in the chat
         const chat = await Chat.findById(chatId).populate('participants');
@@ -97,6 +117,9 @@ module.exports = (io) => {
         }
       } catch (error) {
         console.error('Message error:', error);
+        if (typeof callback === 'function') {
+          callback({ ok: false });
+        }
       }
     });
 

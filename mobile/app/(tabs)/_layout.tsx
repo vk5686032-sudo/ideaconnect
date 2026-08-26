@@ -1,5 +1,6 @@
-import { Redirect, Tabs } from 'expo-router';
-import { FolderKanban, Home, Lightbulb, MessageCircle, User } from 'lucide-react-native';
+import { Redirect, Tabs, useRouter } from 'expo-router';
+import { Pressable } from 'react-native';
+import { Bookmark, FolderKanban, Home, Lightbulb, MessageCircle, User } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 
 import { colors } from '@/theme/colors';
@@ -9,6 +10,7 @@ export default function TabLayout() {
   const { colorScheme } = useColorScheme();
   const palette = colorScheme === 'dark' ? colors.dark : colors.light;
   const status = useAuthStatus();
+  const router = useRouter();
 
   if (status === 'unauthenticated') {
     return <Redirect href="/(auth)/login" />;
@@ -33,6 +35,14 @@ export default function TabLayout() {
         options={{
           title: 'Ideas',
           tabBarIcon: ({ color, size }) => <Lightbulb color={color} size={size} />,
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/ideas/bookmarks')}
+              className="pr-1"
+              accessibilityLabel="Bookmarked ideas">
+              <Bookmark size={22} color={palette.tint} strokeWidth={2} />
+            </Pressable>
+          ),
         }}
       />
       <Tabs.Screen

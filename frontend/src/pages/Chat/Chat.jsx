@@ -5,7 +5,7 @@ import {
   CornerUpLeft, SmilePlus, Pencil, Trash2, MoreHorizontal,
   Users, UserPlus, UserMinus, Shield, LogOut, Check,
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import chatApi from '../../api/chat.api';
 import userApi from '../../api/user.api';
@@ -80,7 +80,15 @@ const Chat = () => {
   const chats = chatsData?.data?.data || [];
   const [localMessages, setLocalMessages] = useState([]);
   const serverMessages = messagesData?.data?.data || [];
-  const messages = [...serverMessages, ...localMessages];
+  // Merge without cross-source duplicates: once the server list contains an
+  // echo that also lives in localMessages, the server copy wins.
+  const messages = useMemo(() => {
+    const serverIds = new Set(serverMessages.map((m) => m._id));
+    return [
+      ...serverMessages,
+      ...localMessages.filter((m) => !serverIds.has(m._id)),
+    ];
+  }, [serverMessages, localMessages]);
   const currentChat = chats.find((c) => c._id === id);
 
   // In project mode the chat list isn't loaded, so fetch this chat directly
@@ -158,9 +166,11 @@ const Chat = () => {
 
     const onMessageReceived = (msg) => {
       if (msg.chat === id || msg.chat?._id === id) {
-        if (!serverMessages.some((m) => m._id === msg._id)) {
-          setLocalMessages((prev) => [...prev, msg]);
-        }
+        setLocalMessages((prev) => {
+          if (prev.some((m) => m._id === msg._id)) return prev;
+          if (serverMessages.some((m) => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
       }
       queryClient.invalidateQueries(['chats']);
     };

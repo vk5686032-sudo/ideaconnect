@@ -24,6 +24,13 @@ import Toast from 'react-native-toast-message';
 import { colors } from '@/theme/colors';
 import { toastConfig } from '@/components/ToastConfig';
 import { useAuthStore } from '@/store/authSlice';
+import { usePresenceStore } from '@/store/presenceSlice';
+import {
+  connectSocket,
+  disconnectSocket,
+  joinUserRoom,
+  onSocketEvent,
+} from '@/services/socket';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -33,7 +40,14 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
 
 const lightNavTheme = {
   ...DefaultTheme,
@@ -86,6 +100,40 @@ export default function RootLayout() {
     }
   }, [loaded, status]);
 
+  useEffect(() => {
+    if (status === 'authenticated') {
+      void (async () => {
+        const connected = await connectSocket();
+        const user = useAuthStore.getState().user;
+        const userId = user?._id || user?.id;
+        if (connected && userId) {
+          joinUserRoom(userId);
+        }
+      })();
+    } else if (status === 'unauthenticated') {
+      disconnectSocket();
+      usePresenceStore.getState().reset();
+    }
+  }, [status]);
+
+  useEffect(() => {
+    const presence = usePresenceStore.getState();
+    const offSnapshot = onSocketEvent('presence:snapshot', (ids) => {
+      presence.setOnlineIds((ids as string[]) ?? []);
+    });
+    const offOnline = onSocketEvent('user:online', (userId) => {
+      presence.handleOnline(userId as string);
+    });
+    const offOffline = onSocketEvent('user:offline', (userId) => {
+      presence.handleOffline(userId as string);
+    });
+    return () => {
+      offSnapshot();
+      offOnline();
+      offOffline();
+    };
+  }, []);
+
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -101,6 +149,10 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="ideas" options={{ headerShown: false }} />
+            <Stack.Screen name="projects" options={{ headerShown: false }} />
+            <Stack.Screen name="chat" options={{ headerShown: false }} />
+            <Stack.Screen name="users" options={{ headerShown: false }} />
           </Stack>
           <Toast config={toastConfig} topOffset={48} />
         </View>
