@@ -287,3 +287,37 @@ export interface Chat {
   relatedProject?: { _id: string; title: string } | string | null;
   createdAt: string;
 }
+
+export type NotificationType =
+  | 'like'
+  | 'comment'
+  | 'reply'
+  | 'mention'
+  | 'invitation'
+  | 'join-request'
+  | 'project-update'
+  | 'task-assigned'
+  | 'mentor-review'
+  | 'mentor-request'
+  | 'mentor-request-accepted'
+  | 'mentor-request-rejected'
+  | 'ai-analysis'
+  | 'system'
+  | 'start-project-request'
+  | 'start-project-approved'
+  | 'start-project-rejected'
+  | 'content-report';
+
+export interface AppNotification {
+  _id: string;
+  sender?: IdeaAuthor | string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  relatedIdea?: string | null;
+  relatedProject?: string | null;
+  read: boolean;
+  readAt?: string | null;
+  actionUrl?: string | null;
+  createdAt: string;
+}

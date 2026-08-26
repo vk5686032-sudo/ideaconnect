@@ -5,6 +5,7 @@ import {
   DefaultTheme,
   Stack,
   ThemeProvider,
+  useRouter,
 } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -15,14 +16,22 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useColorScheme } from 'nativewind';
 import Toast from 'react-native-toast-message';
 
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from '@tanstack/react-query';
+
 import { colors } from '@/theme/colors';
-import { toastConfig } from '@/components/ToastConfig';
+import {
+  showToast,
+  toastConfig,
+} from '@/components/ToastConfig';
 import { useAuthStore } from '@/store/authSlice';
 import { usePresenceStore } from '@/store/presenceSlice';
 import {
@@ -31,8 +40,54 @@ import {
   joinUserRoom,
   onSocketEvent,
 } from '@/services/socket';
+import { registerPushToken } from '@/services/pushTokens';
+import {
+  notificationKeys,
+  prependNotification,
+  useMarkNotificationRead,
+} from '@/hooks/queries/useNotifications';
+import { resolveActionRoute } from '@/utils/links';
+import type { AppNotification } from '@/types/models';
 
 export { ErrorBoundary } from 'expo-router';
+
+function SocketNotificationBridge() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const markRead = useMarkNotificationRead();
+
+  useEffect(() => {
+    const off = onSocketEvent('notification', (payload) => {
+      const data = payload as {
+        type?: string;
+        chatId?: string;
+        notification?: AppNotification;
+      };
+      void queryClient.invalidateQueries({
+        queryKey: notificationKeys.unread(),
+      });
+      if (data?.notification) {
+        prependNotification(queryClient, data.notification);
+        const notification = data.notification;
+        const route = resolveActionRoute(notification.actionUrl);
+        showToast({
+          type: 'info',
+          text1: notification.title,
+          text2: notification.message,
+          onAction: () => {
+            if (!notification.read) {
+              markRead.mutate(notification._id);
+            }
+            router.push(route ?? { pathname: '/notifications' });
+          },
+        });
+      }
+    });
+    return off;
+  }, [queryClient, router, markRead]);
+
+  return null;
+}
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -109,6 +164,7 @@ export default function RootLayout() {
         if (connected && userId) {
           joinUserRoom(userId);
         }
+        void registerPushToken();
       })();
     } else if (status === 'unauthenticated') {
       disconnectSocket();
@@ -143,6 +199,7 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <SocketNotificationBridge />
       <ThemeProvider value={isDark ? darkNavTheme : lightNavTheme}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         <View className={isDark ? 'dark flex-1' : 'flex-1'}>
@@ -153,6 +210,7 @@ export default function RootLayout() {
             <Stack.Screen name="projects" options={{ headerShown: false }} />
             <Stack.Screen name="chat" options={{ headerShown: false }} />
             <Stack.Screen name="users" options={{ headerShown: false }} />
+            <Stack.Screen name="notifications" options={{ headerShown: false }} />
           </Stack>
           <Toast config={toastConfig} topOffset={48} />
         </View>

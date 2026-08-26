@@ -7,6 +7,7 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { authApi } from '@/api/auth.api';
+import { unregisterPushToken } from '@/services/pushTokens';
 import { getRefreshToken } from '@/api/tokenStorage';
 import { useAuthStore } from '@/store/authSlice';
 import { useCurrentUser } from '@/hooks/useAuth';
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
+      await unregisterPushToken();
       const refreshToken = await getRefreshToken();
       if (refreshToken) {
         await authApi.logout(refreshToken);

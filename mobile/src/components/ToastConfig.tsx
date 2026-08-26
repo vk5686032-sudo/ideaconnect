@@ -1,15 +1,18 @@
-import { Text, View } from 'react-native';
-import type { ToastConfig } from 'react-native-toast-message';
-import { CheckCircle2, Info, XCircle } from 'lucide-react-native';
+import { Pressable, Text, View } from 'react-native';
+import type { ToastConfig, ToastShowParams } from 'react-native-toast-message';
+import Toast from 'react-native-toast-message';
+import { CheckCircle2, ChevronRight, Info, XCircle } from 'lucide-react-native';
 
 function ToastCard({
   tone,
   text1,
   text2,
+  onAction,
 }: {
   tone: 'success' | 'error' | 'info';
   text1?: string;
   text2?: string;
+  onAction?: () => void;
 }) {
   const icon =
     tone === 'success' ? (
@@ -20,7 +23,7 @@ function ToastCard({
       <Info size={20} color="#6366f1" />
     );
 
-  return (
+  const card = (
     <View className="flex-row items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       {icon}
       <View className="flex-1">
@@ -35,7 +38,23 @@ function ToastCard({
           </Text>
         ) : null}
       </View>
+      {onAction ? (
+        <ChevronRight size={18} color="#9ca3af" strokeWidth={2} />
+      ) : null}
     </View>
+  );
+
+  if (!onAction) return card;
+
+  return (
+    <Pressable
+      onPress={() => {
+        Toast.hide();
+        onAction();
+      }}
+      className="active:opacity-80">
+      {card}
+    </Pressable>
   );
 }
 
@@ -44,3 +63,9 @@ export const toastConfig: ToastConfig = {
   error: (props) => <ToastCard tone="error" {...props} />,
   info: (props) => <ToastCard tone="info" {...props} />,
 };
+
+export function showToast(
+  params: ToastShowParams & { onAction?: () => void }
+): void {
+  Toast.show(params);
+}
