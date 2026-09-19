@@ -187,7 +187,7 @@ exports.getMessages = async (req, res, next) => {
     }
 
     // Check if user is participant
-    if (!chat.participants.includes(req.user._id)) {
+    if (!chat.participants.some(p => p.toString() === req.user._id.toString())) {
       return errorResponse(res, 403, 'Not authorized');
     }
 
@@ -223,7 +223,7 @@ exports.sendAttachment = async (req, res, next) => {
     if (!chat) {
       return errorResponse(res, 404, 'Chat not found');
     }
-    if (!chat.participants.includes(req.user._id)) {
+    if (!chat.participants.some(p => p.toString() === req.user._id.toString())) {
       return errorResponse(res, 403, 'Not authorized');
     }
     if (!req.file) {
@@ -418,7 +418,7 @@ exports.addParticipant = async (req, res, next) => {
       return errorResponse(res, 403, 'Only team members can add participants');
     }
 
-    if (chat.participants.includes(userId)) {
+    if (chat.participants.some(p => p.toString() === userId.toString())) {
       return errorResponse(res, 400, 'User already in chat');
     }
 
@@ -446,11 +446,11 @@ exports.removeParticipant = async (req, res, next) => {
     if (chat.type !== 'group') {
       return errorResponse(res, 400, 'Cannot remove from direct chat');
     }
-    if (!chat.admins.includes(req.user._id)) {
+    if (!chat.admins.some(a => a.toString() === req.user._id.toString())) {
       return errorResponse(res, 403, 'Only admins can remove members');
     }
 
-    if (!chat.participants.includes(userId)) {
+    if (!chat.participants.some(p => p.toString() === userId.toString())) {
       return errorResponse(res, 400, 'User is not in the chat');
     }
     // Can't remove the creator/admin themselves this way
@@ -485,13 +485,13 @@ exports.promoteToAdmin = async (req, res, next) => {
     if (chat.type !== 'group') {
       return errorResponse(res, 400, 'Not a group chat');
     }
-    if (!chat.admins.includes(req.user._id)) {
+    if (!chat.admins.some(a => a.toString() === req.user._id.toString())) {
       return errorResponse(res, 403, 'Only admins can promote members');
     }
-    if (!chat.participants.includes(userId)) {
+    if (!chat.participants.some(p => p.toString() === userId.toString())) {
       return errorResponse(res, 400, 'User is not in the chat');
     }
-    if (chat.admins.includes(userId)) {
+    if (chat.admins.some(a => a.toString() === userId.toString())) {
       return errorResponse(res, 400, 'User is already an admin');
     }
 

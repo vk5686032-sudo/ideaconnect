@@ -31,7 +31,7 @@ const ProjectDetail = () => {
   const { data: projectData, isLoading } = useQuery({
     queryKey: ['project', id],
     queryFn: () => projectApi.getById(id),
-    enabled: !!id,
+    enabled: !!id && id !== 'undefined',
   });
 
   const project = projectData?.data?.data;

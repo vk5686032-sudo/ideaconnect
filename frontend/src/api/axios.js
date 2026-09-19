@@ -3,6 +3,16 @@ import useAuthStore from '../store/authSlice';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
+const getStoredValue = (key) => localStorage.getItem(key) || sessionStorage.getItem(key);
+const removeStoredValue = (key) => {
+  localStorage.removeItem(key);
+  sessionStorage.removeItem(key);
+};
+const setStoredValue = (key, value) => {
+  const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+  storage.setItem(key, value);
+};
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -13,7 +23,7 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = getStoredValue('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,8 +47,8 @@ const AUTH_ENDPOINTS = [
 
 // Full session teardown (store + persisted keys)
 const hardLogout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('refreshToken');
+  removeStoredValue('token');
+  removeStoredValue('refreshToken');
   localStorage.removeItem('user');
   try {
     localStorage.removeItem('auth-storage');
@@ -54,7 +64,7 @@ let refreshPromise = null;
 
 const refreshAccessToken = () => {
   if (!refreshPromise) {
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = getStoredValue('refreshToken');
     if (!refreshToken) {
       return Promise.resolve(null);
     }
@@ -66,8 +76,8 @@ const refreshAccessToken = () => {
         if (!data?.token || !data?.refreshToken) {
           throw new Error('Malformed refresh response');
         }
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('refreshToken', data.refreshToken);
+        setStoredValue('token', data.token);
+        setStoredValue('refreshToken', data.refreshToken);
         if (data.user) {
           useAuthStore.getState().updateUser(data.user);
         }
@@ -96,7 +106,7 @@ api.interceptors.response.use(
     if (status === 401 && !isAuthRequest && !original._retried) {
       original._retried = true;
 
-      if (localStorage.getItem('refreshToken')) {
+      if (getStoredValue('refreshToken')) {
         const newToken = await refreshAccessToken();
         if (newToken) {
           // Retry the original request with the renewed access token

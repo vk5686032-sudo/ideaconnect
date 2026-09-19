@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Calendar, Globe, Edit2, Save, X, MessageSquare, Loader2, GraduationCap, Briefcase, Trash2, Flag } from 'lucide-react';
+import { User, Calendar, Globe, Edit2, Save, X, MessageSquare, Loader2, GraduationCap, Briefcase, Trash2, Flag, Settings } from 'lucide-react';
 import { GithubIcon, LinkedinIcon } from '../../components/common/BrandIcons';
 import BackButton from '../../components/common/BackButton';
 import ReportModal from '../../components/reports/ReportModal';
@@ -268,10 +268,16 @@ const Profile = () => {
               </button>
             )}
             {isOwnProfile && (
-              <button onClick={() => setIsEditing(!isEditing)} className="btn-outline flex items-center gap-2 justify-center">
-                {isEditing ? <X className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-                {isEditing ? 'Cancel' : 'Edit Profile'}
-              </button>
+              <>
+                <button onClick={() => navigate('/settings')} className="btn-outline flex items-center gap-2 justify-center">
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </button>
+                <button onClick={() => setIsEditing(!isEditing)} className="btn-outline flex items-center gap-2 justify-center">
+                  {isEditing ? <X className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                  {isEditing ? 'Cancel' : 'Edit Profile'}
+                </button>
+              </>
             )}
           </div>
         </div>

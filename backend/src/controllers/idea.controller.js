@@ -209,10 +209,10 @@ exports.toggleLike = async (req, res, next) => {
       return errorResponse(res, 404, 'Idea not found');
     }
 
-    const isLiked = idea.likes.includes(req.user._id);
+    const isLiked = idea.likes.some(id => id.toString() === req.user._id.toString());
 
     if (isLiked) {
-      idea.likes.pull(req.user._id);
+      idea.likes = idea.likes.filter(id => id.toString() !== req.user._id.toString());
       // Reverse the author's reputation gain from the removed like
       if (idea.author.toString() !== req.user._id.toString()) {
         await reputationService.award(idea.author, -reputationService.POINTS.IDEA_LIKED);
@@ -254,10 +254,10 @@ exports.toggleBookmark = async (req, res, next) => {
       return errorResponse(res, 404, 'Idea not found');
     }
 
-    const isBookmarked = idea.bookmarks.includes(req.user._id);
+    const isBookmarked = idea.bookmarks.some(id => id.toString() === req.user._id.toString());
 
     if (isBookmarked) {
-      idea.bookmarks.pull(req.user._id);
+      idea.bookmarks = idea.bookmarks.filter(id => id.toString() !== req.user._id.toString());
     } else {
       idea.bookmarks.push(req.user._id);
     }

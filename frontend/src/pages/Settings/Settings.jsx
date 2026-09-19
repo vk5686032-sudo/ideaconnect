@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
   Camera, Loader2, Save, Trash2, AlertTriangle, Lock, User as UserIcon, LogOut,
@@ -93,8 +93,13 @@ const Settings = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="mb-4">
-        <BackButton />
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <BackButton />
+        </div>
+        <Link to="/profile" className="text-sm text-primary-600 hover:text-primary-700 hover:underline flex items-center gap-2">
+          <UserIcon className="w-4 h-4" /> View Profile
+        </Link>
       </div>
       <h1 className="text-2xl font-bold mb-8">Settings</h1>
 

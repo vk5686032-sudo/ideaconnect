@@ -1,0 +1,14 @@
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\README.md
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\frontend\README.md
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\frontend\index.html
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\frontend\public\favicon.svg
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\frontend\public\icons.svg
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\frontend\src\assets\hero.png
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\frontend\src\assets\react.svg
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\frontend\src\assets\vite.svg
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\mobile\assets\images\android-icon-background.png
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\mobile\assets\images\android-icon-foreground.png
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\mobile\assets\images\android-icon-monochrome.png
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\mobile\assets\images\favicon.png
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\mobile\assets\images\icon.png
+C:\Users\vk568\OneDrive\Desktop\claude\omniroute.test\mobile\assets\images\splash-icon.png

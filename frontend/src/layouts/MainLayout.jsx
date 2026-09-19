@@ -123,7 +123,7 @@ const MainLayout = () => {
 
   const handleLogout = () => {
     // Best-effort server-side revocation of this device's refresh token
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
     if (refreshToken) {
       authApi.logout(refreshToken).catch(() => {});
     }
@@ -210,9 +210,6 @@ const MainLayout = () => {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{user?.name}</p>
               <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-              <Link to="/settings" onClick={handleNavClick} className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1 mt-0.5">
-                <Settings className="w-3 h-3" /> Settings
-              </Link>
             </div>
           )}
           {showDetails && (

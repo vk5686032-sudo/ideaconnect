@@ -56,6 +56,10 @@ exports.createTask = async (req, res, next) => {
       return errorResponse(res, 403, 'Only project members can create tasks');
     }
 
+    if (assignedTo && !isProjectMember(project, assignedTo) && project.owner.toString() !== assignedTo.toString()) {
+      return errorResponse(res, 400, 'Tasks can only be assigned to project members');
+    }
+
     const maxOrder = await Task.countDocuments({ project: project._id });
 
     // Respect the column the task was created in; fall back to 'todo'
@@ -66,7 +70,7 @@ exports.createTask = async (req, res, next) => {
       title,
       description,
       project: project._id,
-      assignedTo: assignedTo || req.user._id,
+      assignedTo: assignedTo || null,
       createdBy: req.user._id,
       priority: priority || 'medium',
       dueDate,
@@ -115,6 +119,15 @@ exports.updateTask = async (req, res, next) => {
     const updateData = { ...req.body };
     delete updateData.project;
     delete updateData.createdBy;
+
+    if (
+      Object.prototype.hasOwnProperty.call(updateData, 'assignedTo') &&
+      updateData.assignedTo &&
+      !isProjectMember(project, updateData.assignedTo) &&
+      project.owner.toString() !== updateData.assignedTo.toString()
+    ) {
+      return errorResponse(res, 400, 'Tasks can only be assigned to project members');
+    }
 
     // Track completion
     if (updateData.status === 'completed' && task.status !== 'completed') {
@@ -215,11 +228,14 @@ exports.deleteTask = async (req, res, next) => {
   }
 };
 
-// Get my assigned tasks
+// Get my assigned tasks — only tasks explicitly assigned to the user.
+// Unassigned tasks (assignedTo: null) are intentionally excluded so
+// that tasks created without a specific assignee don't pollute the list.
 exports.getMyTasks = async (req, res, next) => {
   try {
     const tasks = await Task.find({
       assignedTo: req.user._id,
+      project: { $ne: null },
       status: { $ne: 'completed' },
     })
       .populate('project', 'title status')
@@ -227,7 +243,7 @@ exports.getMyTasks = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(50);
 
-    successResponse(res, 200, 'My tasks retrieved successfully', tasks);
+    successResponse(res, 200, 'My tasks retrieved successfully', tasks.filter((task) => task.project));
   } catch (error) {
     next(error);
   }

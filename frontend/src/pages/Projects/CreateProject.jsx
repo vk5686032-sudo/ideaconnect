@@ -40,7 +40,7 @@ const CreateProject = () => {
   const { data: existingData } = useQuery({
     queryKey: ['project', id],
     queryFn: () => projectApi.getById(id),
-    enabled: isEditing,
+    enabled: isEditing && id !== 'undefined',
   });
 
   const existingProject = existingData?.data?.data;

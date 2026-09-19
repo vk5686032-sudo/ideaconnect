@@ -25,6 +25,7 @@ const Login = () => {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
+    defaultValues: { rememberMe: true },
   });
 
   const onSubmit = async (data) => {
@@ -32,7 +33,7 @@ const Login = () => {
       setIsLoading(true);
       const response = await authApi.login(data);
       const { user, token, refreshToken } = response.data.data;
-      setAuth(user, token, refreshToken);
+      setAuth(user, token, refreshToken, data.rememberMe);
       toast.success('Login successful!');
       navigate('/dashboard');
     } catch (error) {
@@ -92,7 +93,11 @@ const Login = () => {
 
           <div className="flex items-center justify-between">
             <label className="flex items-center">
-              <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-primary-600" />
+              <input
+                type="checkbox"
+                {...register('rememberMe')}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600"
+              />
               <span className="ml-2 text-sm text-gray-600">Remember me</span>
             </label>
             <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">

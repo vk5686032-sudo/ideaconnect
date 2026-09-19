@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Check, X } from 'lucide-react';
 import BackButton from '../../components/common/BackButton';
 import notificationApi from '../../api/notification.api';
+import projectApi from '../../api/project.api';
 import { timeSince } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const Notifications = () => {
   const queryClient = useQueryClient();
@@ -27,6 +29,22 @@ const Notifications = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['unread-notifications']);
       queryClient.invalidateQueries(['notifications']);
+    },
+  });
+
+  const handleInvitation = useMutation({
+    mutationFn: ({ invitationId, action, notificationId }) => projectApi.handleInvitation(invitationId, action),
+    onSuccess: (data, { action, notificationId }) => {
+      toast.success(action === 'accept' ? 'Invitation accepted!' : 'Invitation declined');
+      // Mark notification as read after handling
+      if (notificationId) {
+        notificationApi.markAsRead(notificationId);
+      }
+      queryClient.invalidateQueries(['notifications']);
+      queryClient.invalidateQueries(['projects']);
+    },
+    onError: () => {
+      toast.error('Failed to respond to invitation');
     },
   });
 
@@ -96,34 +114,72 @@ const Notifications = () => {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-50">
           {notifications.map((n) => (
-            <button
+            <div
               key={n._id}
-              onClick={() => handleNotificationClick(n)}
-              className={`w-full text-left px-5 py-4 flex items-start gap-3 hover:bg-gray-50 transition-colors ${
+              className={`px-5 py-4 flex items-start gap-3 transition-colors ${
                 !n.read ? 'bg-primary-50/30' : ''
               }`}
             >
-              {n.sender?.avatar?.url ? (
-                <img src={n.sender.avatar.url} alt="" className="w-10 h-10 rounded-full flex-shrink-0" />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <Bell className="w-5 h-5 text-primary-500" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm leading-relaxed">
-                  <span className="font-medium">{n.sender?.name}</span>{' '}
-                  {getNotificationText(n)}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">{timeSince(n.createdAt)}</p>
-                {n.title && n.type === 'invitation' && (
-                  <div className="mt-2 text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded inline-block">
-                    {n.title}
+              <button
+                onClick={() => handleNotificationClick(n)}
+                className="flex items-start gap-3 flex-1 text-left hover:opacity-75"
+              >
+                {n.sender?.avatar?.url ? (
+                  <img src={n.sender.avatar.url} alt="" className="w-10 h-10 rounded-full flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-5 h-5 text-primary-500" />
                   </div>
                 )}
-              </div>
-              {!n.read && <div className="w-2 h-2 rounded-full bg-primary-500 mt-2 flex-shrink-0" />}
-            </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm leading-relaxed">
+                    <span className="font-medium">{n.sender?.name}</span>{' '}
+                    {getNotificationText(n)}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">{timeSince(n.createdAt)}</p>
+                  {n.title && n.type === 'invitation' && (
+                    <div className="mt-2 text-xs bg-primary-50 text-primary-700 px-2 py-1 rounded inline-block">
+                      {n.title}
+                    </div>
+                  )}
+                </div>
+                {!n.read && <div className="w-2 h-2 rounded-full bg-primary-500 mt-2 flex-shrink-0" />}
+              </button>
+
+              {/* Action buttons for join-request and invitation */}
+              {(n.type === 'join-request' || n.type === 'invitation') && n.relatedInvitation && (
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() =>
+                      handleInvitation.mutate({
+                        invitationId: n.relatedInvitation,
+                        action: 'accept',
+                        notificationId: n._id,
+                      })
+                    }
+                    disabled={handleInvitation.isPending}
+                    className="btn-primary text-xs px-2 py-1 flex items-center gap-1 hover:bg-primary-700"
+                  >
+                    <Check className="w-3 h-3" />
+                    Accept
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleInvitation.mutate({
+                        invitationId: n.relatedInvitation,
+                        action: 'reject',
+                        notificationId: n._id,
+                      })
+                    }
+                    disabled={handleInvitation.isPending}
+                    className="btn-outline text-xs px-2 py-1 flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Decline
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

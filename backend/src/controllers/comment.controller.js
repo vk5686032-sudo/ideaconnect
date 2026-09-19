@@ -200,10 +200,10 @@ exports.toggleLike = async (req, res, next) => {
       return errorResponse(res, 404, 'Comment not found');
     }
 
-    const isLiked = comment.likes.includes(req.user._id);
+    const isLiked = comment.likes.some(id => id.toString() === req.user._id.toString());
 
     if (isLiked) {
-      comment.likes.pull(req.user._id);
+      comment.likes = comment.likes.filter(id => id.toString() !== req.user._id.toString());
     } else {
       comment.likes.push(req.user._id);
     }
