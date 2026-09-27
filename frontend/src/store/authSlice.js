@@ -1,31 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-const authStorage = {
-  getItem: (name) => localStorage.getItem(name) || sessionStorage.getItem(name),
-  setItem: (name, value) => {
-    const { state } = JSON.parse(value);
-    const storage = state.rememberMe ? localStorage : sessionStorage;
-    const otherStorage = state.rememberMe ? sessionStorage : localStorage;
-    otherStorage.removeItem(name);
-    storage.setItem(name, value);
-  },
-  removeItem: (name) => {
-    localStorage.removeItem(name);
-    sessionStorage.removeItem(name);
-  },
-};
-
-// Auth API returns the user with `id`; components use `_id`.
-// Normalize so both are always present.
-const normalizeUser = (user) => {
-  if (!user) return user;
-  return {
-    ...user,
-    _id: user._id || user.id,
-    id: user.id || user._id,
-  };
-};
+import { authStorage, normalizeUser } from './authStorage';
 
 const useAuthStore = create(
   persist(
@@ -63,7 +38,7 @@ const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      storage: { getItem: authStorage.getItem, setItem: authStorage.setItem, removeItem: authStorage.removeItem },
+      storage: authStorage,
       partialize: (state) => ({
         user: state.user,
         token: state.token,
