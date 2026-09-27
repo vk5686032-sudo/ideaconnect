@@ -33,7 +33,7 @@ const Notifications = () => {
   });
 
   const handleInvitation = useMutation({
-    mutationFn: ({ invitationId, action, notificationId }) => projectApi.handleInvitation(invitationId, action),
+    mutationFn: ({ invitationId, action }) => projectApi.handleInvitation(invitationId, action),
     onSuccess: (data, { action, notificationId }) => {
       toast.success(action === 'accept' ? 'Invitation accepted!' : 'Invitation declined');
       // Mark notification as read after handling

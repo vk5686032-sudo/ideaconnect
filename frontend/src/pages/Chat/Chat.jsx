@@ -79,7 +79,9 @@ const Chat = () => {
 
   const chats = chatsData?.data?.data || [];
   const [localMessages, setLocalMessages] = useState([]);
-  const serverMessages = messagesData?.data?.data || [];
+  // Stable reference: `|| []` allocates a new array each render, which would
+  // invalidate the merge memo below on every render.
+  const serverMessages = useMemo(() => messagesData?.data?.data || [], [messagesData]);
   // Merge without cross-source duplicates: once the server list contains an
   // echo that also lives in localMessages, the server copy wins.
   const messages = useMemo(() => {
