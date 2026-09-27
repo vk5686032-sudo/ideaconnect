@@ -1,0 +1,161 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+IdeaConnect is a full-stack MERN collaborative innovation platform where users share ideas, form
+teams, build projects, and collaborate in real time with AI assistance. It ships three apps:
+
+- `backend/` — Express 5 + Mongoose 9 REST + Socket.io API
+- `frontend/` — React 19 + Vite web client
+- `mobile/` — Expo / React Native client (Expo Router)
+
+## Development Commands
+
+### Backend (from `backend/`)
+```bash
+npm run dev       # nodemon hot-reload
+npm start         # production start
+npm run seed      # Load demo data (clears DB first)
+npm run seed:dry  # Preview seed without changes
+npm run backfill:reputation   # Recompute reputation from existing activity
+npm test          # node:test + supertest (requires local MongoDB)
+node scripts/verify-openapi.js  # Assert the OpenAPI spec covers every registered route
+```
+
+### Frontend (from `frontend/`)
+```bash
+npm run dev       # Vite dev server (localhost:5173, LAN-exposed)
+npm run build     # Production build
+npm run preview   # Preview production build
+npm run lint      # Oxlint
+npm test          # Vitest
+```
+
+### Mobile (from `mobile/`)
+```bash
+npm start         # Expo
+npm run android   # Android
+npm run ios       # iOS
+npm run typecheck # tsc --noEmit (must be zero errors)
+npm run lint      # expo lint
+```
+
+### Docker (from repo root)
+```bash
+docker compose up --build          # mongo + backend + nginx frontend on :8080
+docker compose exec backend node src/seed.js
+```
+
+### CI
+`.github/workflows/ci.yml` — four jobs on push/PR to `main`: backend (tests + OpenAPI verify),
+frontend (lint/test/build), mobile (typecheck/lint), docker (build + live smoke test).
+
+## Environment Setup
+
+### Backend (`backend/.env`)
+Copy from `.env.example`. Key variables:
+- `MONGODB_URI` — MongoDB connection (default: `mongodb://localhost:27017/ideaconnect`)
+- `JWT_SECRET` — JWT signing secret (must be changed from the placeholder)
+- `JWT_EXPIRE` — access-token lifetime, default `15m`
+- `REFRESH_TOKEN_EXPIRE_DAYS` — refresh-token lifetime, default `30`
+- `FRONTEND_URL` — Allowed CORS origin (default: `http://localhost:5173`)
+- `RATE_LIMIT_MAX` — requests per 15 min per IP, default `600` (localhost exempt)
+- SMTP, Cloudinary, OpenAI keys are optional — the app degrades to mock/demo behavior
+
+### Frontend (`frontend/.env`)
+```
+VITE_API_URL=http://localhost:5000/api/v1
+VITE_SOCKET_URL=http://localhost:5000
+```
+Leave both empty to use the same origin (nginx/Docker proxies `/api` and `/socket.io`).
+
+### Mobile (`mobile/.env`)
+```
+EXPO_PUBLIC_API_URL=http://192.168.0.156:5000/api/v1   # LAN IP for a physical device
+EXPO_PUBLIC_SOCKET_URL=http://192.168.0.156:5000
+EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push tokens
+```
+
+## Architecture
+
+### Backend Structure
+- **Entry**: `src/server.js` creates the HTTP server, initializes Socket.io, connects MongoDB
+- **App**: `src/app.js` configures Express middleware (Helmet, CORS, rate limiting) and mounts routes
+- **Routes**: One file per resource in `src/routes/`. Each carries `@openapi` JSDoc annotations
+  that feed the Swagger spec; run `node scripts/verify-openapi.js` after changing a route.
+- **Controllers**: Business logic in `src/controllers/`
+- **Models**: Mongoose schemas in `src/models/` (User, Idea, Project, Task, Chat, Message,
+  Comment, Notification, Invitation, AuditLog)
+- **Auth**: JWT-based; middleware in `src/middlewares/auth.js` (`protect`, `optionalAuth`,
+  `authorize(role)`, `checkVerification`, `isApprovedMentor`)
+- **Socket.io**: `src/config/socket.js` (JWT handshake auth) and `src/sockets/chat.socket.js`
+- **Services**: `src/services/` (ai, email, notification, push, invitation, reputation)
+
+### Frontend Structure
+- **Entry**: `src/main.jsx` → `src/App.jsx` → `src/routes/AppRoutes.jsx`
+- **Routing**: React Router `createBrowserRouter`; guards in `routes/ProtectedRoute.jsx`
+  (`ProtectedRoute`, `AdminRoute`, `GuestRoute`)
+- **State**: Zustand in `src/store/authSlice.js`, persisted through the adapter in
+  `src/store/authStorage.js`
+- **API**: Axios instance `src/api/axios.js` with Bearer + single-flight refresh interceptors
+- **Socket**: `src/services/socket.js`
+- **Layouts**: `MainLayout` (persistent sidebar), `AuthLayout` (login/register)
+- **Pages**: Feature directories under `src/pages/`
+
+### Mobile Structure
+- Expo Router file-based routes in `mobile/app/`; all non-route code in `mobile/src/`
+- `src/api/client.ts` is the axios instance; `src/api/tokenStorage.ts` is the only place tokens
+  live (expo-secure-store)
+- `src/services/socket.ts` is a singleton Socket.io client
+
+## Key Patterns
+
+- **Response envelopes**: backend uses `successResponse()` / `errorResponse()` from
+  `src/utils/response.js` → `{ success, message, data }`, paginated adds `pagination`
+- **Auth flow**: token pair in storage, attached by an axios interceptor, user in Zustand.
+  Access tokens last ~15 min; the interceptor performs a **single-flight** refresh and retries
+  the original request once. `AUTH_ENDPOINTS` in `axios.js` must never trigger a global logout.
+- **Role-based access**: `protect` verifies the JWT; `authorize('admin')` restricts admin routes
+- **Real-time**: Socket.io for chat, typing, presence, read receipts and notification push
+- **Mongoose 9**: no `useNewUrlParser`/`useUnifiedTopology`; async pre-save hooks take **no**
+  `next` argument (see `models/User.js`)
+- **Project members are de-duplicated** by `pre('save')` and `pre('findOneAndUpdate')` hooks in
+  `models/Project.js` — no code path may persist a duplicate member
+- **Reputation** is awarded server-side by `services/reputation.service.js` and reversed on undo;
+  it never throws
+
+## Things to be careful about
+
+- **Zustand v5 persist contract**: the storage adapter receives a `{ state, version }` **object**,
+  not a JSON string. `src/store/authStorage.js` handles both. Calling `JSON.parse` on the value
+  throws and silently breaks session persistence (symptom: login appears to succeed but a reload
+  logs the user out).
+- **`rememberMe` must be declared in the zod login schema**, otherwise zod strips it and every
+  session is forced into `localStorage`.
+- **lucide-react v1** dropped brand icons — use `components/common/BrandIcons.jsx`.
+- **Google Fonts `@import` must be line 1** of the stylesheet.
+- **expo-notifications throws at import time in Expo Go** (SDK 53+ Android) — never import it
+  statically in mobile code; use a dynamic import guarded by `Constants.appOwnership`.
+- **Infinite-query caches** must be written through the wrapper (`{ pages, pageParams }`); bare
+  envelopes crash `InfiniteQueryObserver`.
+- **Dedupe by `_id`** when flattening paginated feeds — create/delete shifts positions and
+  duplicates cached pages.
+- **Never put a raw store import in `mobile/src/api/*`** — it creates a require cycle. Use
+  `setAuthClientListener()`; `authSlice` registers itself.
+
+## Demo Accounts
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@ideaconnect.dev | password123 |
+| Mentor | mentor@ideaconnect.dev | password123 |
+| Student | priya@ideaconnect.dev | password123 |
+| Developer | james@ideaconnect.dev | password123 |
+
+## API Surface
+
+All endpoints are prefixed `/api/v1` (a legacy `/api/*` alias also exists). Swagger UI is at
+`/api/v1/docs`; the raw spec is `/api/v1/docs.json`. Route groups: `auth`, `users`, `ideas`,
+`projects`, `tasks`, `chats`, `notifications`, `mentors`, `reports`, `ai`, `admin`, `health`.

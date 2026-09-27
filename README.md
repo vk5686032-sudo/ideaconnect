@@ -1,71 +1,68 @@
 # 💡 IdeaConnect — AI-Powered Collaborative Innovation Platform
 
-A full-stack **MERN** application where students and innovators can **share ideas, form teams, build projects, and collaborate in real time** — with AI assistance and a complete admin panel.
+A full-stack **MERN** platform where students and innovators share ideas, form teams, build
+projects, and collaborate in real time — with AI assistance, a mentor system, reputation, content
+moderation, and a companion **React Native (Expo)** mobile app.
 
 ---
 
 ## ✨ Features
 
 ### 🧠 Idea Management
-- Create, browse, search & filter ideas (by category, status, tags, skills)
+- Create, browse, search & filter ideas (category, status, tags, skills) with infinite scroll
 - Like, bookmark, and share ideas
-- Rich detail view with comments & replies
-- AI-powered idea analysis (feasibility, innovation, market, suggestions, challenges)
-- Convert an idea into a project with one click
+- Comments with threaded replies, edits, deletes and likes; `@Full Name` mentions
+- **AI-powered analysis** (feasibility, innovation, market, suggestions, challenges) with
+  similar-idea detection and teammate suggestions
+- Drafts and visibility control (public / private / invite-only)
+- Convert an idea into a project, or invite teammates onto an idea
 
 ### 📁 Project Collaboration
-- Create projects from scratch or convert from ideas
-- Team invitations & member roles
+- Create projects from scratch or convert from an idea
+- Team invitations, join requests, member roles (lead, developer, designer, researcher, mentor)
 - Milestones with completion tracking
-- **Task board** — assign members, set priorities & due dates, track status; progress auto-calculates from completed tasks
+- **Task board** — 5 columns, drag-and-drop reordering, priorities, due dates, assignee;
+  project progress auto-recalculates from completed tasks
 
 ### 💬 Real-Time Chat
-- Direct (1:1) and group chats
-- **Edit / delete** messages (for yourself or everyone)
-- **Emoji reactions** on messages
-- **File attachments** (images, documents — 10MB)
-- **Reply / thread** to specific messages
-- **Typing indicators** & **read receipts**
-- Live presence (online/offline) via Socket.io
+- Direct (1:1) and group/project chats over Socket.io
+- **Edit / delete** messages (for yourself or everyone), **emoji reactions**, **reply/thread**
+- **File attachments** (images, documents, 10MB)
+- **Typing indicators**, **read receipts** (✓ / ✓✓), live **presence** dots
+- Online/offline transitions with a presence snapshot on reconnect
 
 ### 🔔 Notifications
-- Bell icon with unread-count badge (sidebar + mobile top bar)
-- Dropdown preview of recent notifications
-- Full notifications page with mark-all-read
-- Triggered by likes, comments, project invites, task assignments
+- Bell icon with unread-count badge, dropdown preview, and a full notifications page
+- Realtime push over Socket.io, plus **Expo push** to mobile devices
+- **Actionable notifications** — accept/decline join requests and invitations inline
+- Deep-link (`actionUrl`) navigation from each notification
 
-### 👤 User Profiles
-- Avatar, bio, skills, interests, education & experience
-- Role badges (Admin / Mentor / Student)
-- Social links
-- Message users directly from their profile
-
-### 🛡️ Admin Panel
-- Dashboard stats (users, ideas, projects, active users)
-- **User management** — change roles, ban/unban, approve mentors
-- **Content moderation** — archive/delete ideas & projects
-- Analytics (ideas by category, projects by status, top users)
+### 👤 Profiles & Reputation
+- Avatar, bio, skills, interests, education, experience, social links
+- Role badges (Admin / Mentor / Student); message any user directly from their profile
+- **Reputation** from community activity: likes received (+2), comments (+3), replies (+1),
+  mentor reviews given (+5), completed tasks (+10). Self-actions never count; toggles are symmetric.
 
 ### 🎓 Mentor System
-- Approved mentors review ideas with ratings (1–5) + written feedback
-- Mentor directory with search, mentorship requests (accept opens a direct chat)
-- Incoming-request management on the dashboard
+- Approved mentors review ideas with a 1–5 rating and written feedback
+- Mentor directory with live search; mentorship requests; accept opens a direct chat
 
-### ⭐ Reputation
-- Points earned from community activity: likes received (+2), comments (+3), replies (+1), mentor reviews given (+5), completed tasks (+10)
-- Self-actions never count; toggles are fully symmetric
+### 🛡️ Admin Panel
+- 7 tabs: Overview (stats + analytics), Users, Ideas, Projects, Reports, Approvals, Audit Logs
+- User management: role changes, ban/unban (revokes refresh tokens), mentor approval, bulk actions
+- Content moderation: archive / restore / delete ideas and projects
+- Content reports from users, with one-click resolution
 
-### 🚩 Content Reporting
-- Report ideas, projects, comments, or users with categorized reasons
-- Reports land in the admin panel with one-click archive/delete resolution
+### 📱 Mobile App (Expo / React Native)
+Full parity for the core loop — auth, ideas feed & detail, projects & tasks, realtime chat,
+notifications, profile, mentors, settings. Light/dark theming via NativeWind.
+See [`docs/mobile/`](./docs/mobile/).
 
-### 🔐 Security & UX
-- JWT authentication with short-lived access tokens + rotating refresh tokens (multi-device, revocable)
-- Role-based access control, banned accounts blocked everywhere
-- Email verification + password reset flows (verification currently bypassed in dev — see `middlewares/auth.js`)
-- Rate limiting, Helmet security headers, CORS allow-listing
-- Fully **responsive** — sidebar drawer on mobile, single-pane chat toggle
-- Toast notifications, loading states, optimistic UI
+### 🔐 Security
+- Short-lived JWT access tokens (~15 min) with **rotating refresh tokens** (~30 days, hashed
+  server-side, max 5 devices, revocable individually or all at once)
+- Role-based access control; banned accounts blocked everywhere
+- Rate limiting, Helmet security headers, CORS allow-listing, Zod validation on writes
 
 ---
 
@@ -73,25 +70,23 @@ A full-stack **MERN** application where students and innovators can **share idea
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React 19, Vite, Tailwind CSS, TanStack Query, Zustand, react-router-dom, react-hook-form + Zod, Socket.io-client, lucide-react |
-| **Backend** | Node.js, Express 5, Mongoose 9, Socket.io, JWT, bcrypt, Multer, Nodemailer, Zod |
+| **Frontend** | React 19, Vite, Tailwind CSS, TanStack Query, Zustand, react-router-dom 7, react-hook-form + Zod, Socket.io-client, lucide-react |
+| **Backend** | Node.js, Express 5, Mongoose 9, Socket.io, JWT, bcrypt, Multer, Nodemailer, Zod, swagger-jsdoc |
 | **Database** | MongoDB (local or Atlas) |
-| **Services** | OpenAI/Gemini API (AI), Cloudinary (image uploads), SMTP (email) |
+| **Mobile** | Expo SDK 57, React Native 0.86, Expo Router, NativeWind + Tailwind, Zustand, TanStack Query, expo-secure-store |
+| **Services** | OpenAI/Gemini (AI), Cloudinary (uploads), SMTP (email), Expo push |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Node.js** v18+
+- **Node.js 18+**
 - **MongoDB** running locally (`mongodb://localhost:27017`), or a connection string
 
-### 1. Clone & install
+### 1. Install
 
 ```bash
-git clone <your-repo-url>
-cd omniroute.test
-
 # Backend
 cd backend
 npm install
@@ -99,14 +94,18 @@ npm install
 # Frontend
 cd ../frontend
 npm install
+
+# Mobile (optional)
+cd ../mobile
+npm install
 ```
 
 ### 2. Configure environment
 
-Copy the example and fill in your values:
-
 ```bash
 cd backend
+cp .env.example .env      # fill in your own values
+cd ../frontend
 cp .env.example .env
 ```
 
@@ -114,27 +113,30 @@ cp .env.example .env
 |---|---|---|
 | `PORT` | Backend port | `5000` |
 | `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/ideaconnect` |
-| `JWT_SECRET` | JWT signing secret | change in production |
-| `JWT_EXPIRE` | Token lifetime | `7d` |
+| `JWT_SECRET` | JWT signing secret | **must be changed** |
+| `JWT_EXPIRE` | Access-token lifetime | `15m` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh-token lifetime | `30` |
+| `FRONTEND_URL` | Allowed CORS origin | `http://localhost:5173` |
 | `SMTP_*` | Nodemailer email config | — |
 | `CLOUDINARY_*` | Cloudinary image upload | — |
 | `OPENAI_API_KEY` | AI analysis key | — |
 
-Frontend config (`frontend/.env`):
+Frontend (`frontend/.env`):
 
 ```
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5000/api/v1
 VITE_SOCKET_URL=http://localhost:5000
 ```
 
-> **Note:** without real SMTP / Cloudinary / OpenAI keys the app still runs — emails, cloud image uploads and AI analysis fall back to safe mock/demo behavior.
+> Without real SMTP / Cloudinary / OpenAI keys the app still runs: emails are **skipped cleanly**
+> (logged as `[email:skipped]`), uploads fall back to local disk, and AI analysis returns mock scores.
 
-### 3. Seed demo data (optional but recommended)
+### 3. Seed demo data (recommended)
 
 ```bash
 cd backend
-npm run seed        # clears DB + loads demo data
-npm run seed:dry    # preview without making changes
+npm run seed        # clears the DB, then loads demo data
+npm run seed:dry    # preview without changes
 ```
 
 ### 4. Run
@@ -151,6 +153,27 @@ npm run dev         # Vite dev server
 
 Open **http://localhost:5173** 🎉
 
+For a device on the same Wi-Fi, use your LAN IP in `frontend/.env` (`VITE_API_URL` and
+`FRONTEND_URL` in `backend/.env`).
+
+---
+
+## 🐳 Docker
+
+Run the whole stack (MongoDB + backend + nginx-served frontend) with one command:
+
+```bash
+docker compose up --build
+# → http://localhost:8080
+```
+
+The frontend is served by nginx on `:8080` and reverse-proxies `/api` and `/socket.io` to the
+backend, so the browser uses a single origin. Load demo data with:
+
+```bash
+docker compose exec backend node src/seed.js
+```
+
 ---
 
 ## 🔑 Demo Accounts
@@ -164,34 +187,42 @@ Open **http://localhost:5173** 🎉
 
 ---
 
-## 📚 API Overview
+## 📚 API
 
-All endpoints live under **`/api/v1`** (an unversioned `/api/*` alias is kept for the current web build). Interactive docs: **`/api/v1/docs`** (Swagger UI) · raw spec: `/api/v1/docs.json`.
+All endpoints live under **`/api/v1`** (an unversioned `/api/*` alias is kept for the current web
+build). Interactive docs: **`/api/v1/docs`** (Swagger UI) · raw spec: `/api/v1/docs.json`.
 
-Authenticated requests expect a Bearer access token (~15 min). Clients silently renew it via `POST /auth/refresh` using the rotating refresh token returned at login (~30 days, hashed server-side, max 5 devices).
+Authenticated requests send `Authorization: Bearer <accessToken>` (~15 min). Clients renew
+silently via `POST /auth/refresh` using the rotating refresh token from login (~30 days).
 
-| Route Group | Endpoints | Auth |
+| Route group | Endpoints | Auth |
 |---|---|---|
-| `/api/auth` | register, login, logout, me, verify-email, forgot-password, reset-password | partial |
-| `/api/users` | profile CRUD, upload avatar, all users, user by id | ✓ |
-| `/api/ideas` | CRUD, search, pagination, like, bookmark, comments, AI analysis | ✓ |
-| `/api/projects` | CRUD, invite members, accept/reject invite, progress | ✓ |
-| `/api/chats` | direct/group chats, messages, edit/delete, reactions, attachments, read | ✓ |
-| `/api/notifications` | list, unread-count, mark read / all read | ✓ |
-| `/api/tasks` | project tasks CRUD, my-tasks, milestones | ✓ |
-| `/api/admin` | stats, users, ideas, projects, role/ban/mentor actions | Admin |
-| `/api/ai` | analyze idea | ✓ |
-| `/api/health` | server health | public |
+| `/api/v1/auth` | register, login, refresh, logout, logout-all, me, verify-email, forgot/reset password, resend verification | partial |
+| `/api/v1/users` | directory, profile, avatar, change-password, account, me/stats, push-tokens, skill search | ✓ |
+| `/api/v1/ideas` | CRUD, search/filter/sort, like, bookmark, comments, mentor reviews, team invites, start-project requests | ✓ |
+| `/api/v1/projects` | CRUD, members & roles, invites, join requests, invitations, progress, milestones | ✓ |
+| `/api/v1/tasks` | project tasks CRUD, reorder, my-tasks, milestones | ✓ |
+| `/api/v1/chats` | direct/group/project chats, messages, edit/delete, reactions, attachments, participants, leave | ✓ |
+| `/api/v1/notifications` | list, unread-count, mark read / read-all | ✓ |
+| `/api/v1/mentors` | directory, send request, my requests, incoming requests, accept/reject | ✓ |
+| `/api/v1/reports` | file a content report | ✓ |
+| `/api/v1/ai` | analyze idea, similar ideas, teammates, improve title/description, duplicates, recommendations | ✓ |
+| `/api/v1/admin` | stats, analytics, users, ideas, projects, moderation, bulk actions, reports, approvals, audit logs | Admin |
+| `/api/v1/health` | server health check | public |
 
-### Socket.io events (`chat.socket.js`)
+### Socket.io events (`sockets/chat.socket.js`)
 
-| Event (client → server) | Event (server → client) |
+| Client → server | Server → client |
 |---|---|
-| `join` / `chat:join` / `chat:leave` | `user:online` / `user:offline` |
+| `join` / `chat:join` / `chat:leave` | `user:online` / `user:offline` / `presence:snapshot` |
 | `message:send` | `message:received` |
 | `typing:start` / `typing:stop` | `typing:user` / `typing:stopped` |
 | `messages:read` | `messages:read` |
+| — | `message:edited` / `message:deleted` / `message:deletedFor` / `message:reacted` |
 | — | `notification` (realtime push) |
+
+Sockets authenticate via the JWT in `handshake.auth.token`; the server trusts `socket.userId`
+only, never a client-supplied `senderId`.
 
 ---
 
@@ -199,80 +230,104 @@ Authenticated requests expect a Bearer access token (~15 min). Clients silently 
 
 ```
 omniroute.test/
-├── backend/
+├── backend/                  # Express + MongoDB + Socket.io
 │   ├── src/
-│   │   ├── config/        # env, db, socket, cloudinary
-│   │   ├── controllers/   # auth, idea, project, chat, task, admin…
-│   │   ├── middlewares/   # auth, errorHandler, upload
-│   │   ├── models/        # User, Idea, Project, Task, Chat, Message…
-│   │   ├── routes/        # one per controller
-│   │   ├── services/      # ai, email, notification
-│   │   ├── sockets/       # chat.socket.js
-│   │   ├── utils/         # response helpers
-│   │   ├── seed.js        # demo data
-│   │   ├── app.js
-│   │   └── server.js
-│   └── package.json
-└── frontend/
-    └── src/
-        ├── api/           # axios + per-feature API clients
-        ├── components/    # common & feature components
-        ├── layouts/       # MainLayout (sidebar), AuthLayout
-        ├── pages/         # Ideas, Projects, Chat, Notifications, Admin…
-        ├── routes/        # AppRoutes, ProtectedRoute
-        ├── services/      # socket.js
-        ├── store/         # Zustand auth store
-        ├── utils/         # constants, helpers
-        └── App.jsx / main.jsx
+│   │   ├── config/           # env, db, socket, cloudinary
+│   │   ├── controllers/      # auth, idea, project, chat, task, admin, mentor, report, user, ai, notification, comment
+│   │   ├── middlewares/      # auth, errorHandler, upload
+│   │   ├── models/           # User, Idea, Project, Task, Chat, Message, Comment, Notification, Invitation, AuditLog
+│   │   ├── routes/           # one per controller (+ @openapi annotations)
+│   │   ├── services/         # ai, email, notification, push, invitation, reputation
+│   │   ├── sockets/          # chat.socket.js
+│   │   ├── utils/            # response helpers, jwt, mentions
+│   │   ├── validations/      # zod schemas
+│   │   ├── docs/swagger.js   # OpenAPI spec
+│   │   ├── __tests__/        # node:test + supertest
+│   │   ├── seed.js
+│   │   ├── app.js            # express app
+│   │   └── server.js         # http server + socket.io
+│   ├── scripts/verify-openapi.js
+│   └── Dockerfile
+├── frontend/                 # React + Vite + Tailwind
+│   ├── src/
+│   │   ├── api/              # axios instance + per-feature clients
+│   │   ├── components/       # common, projects, notifications, reports
+│   │   ├── layouts/          # MainLayout (sidebar), AuthLayout
+│   │   ├── pages/            # Ideas, Projects, Chat, Admin, Mentors, …
+│   │   ├── routes/           # AppRoutes, ProtectedRoute
+│   │   ├── services/         # socket.js
+│   │   ├── store/            # Zustand auth store + persist adapter
+│   │   └── utils/
+│   ├── Dockerfile
+│   └── nginx.conf
+├── mobile/                   # Expo / React Native
+│   ├── app/                  # Expo Router routes
+│   ├── src/                  # api, components, hooks, services, store, types, utils
+│   ├── app.json  eas.json
+│   └── docs/mobile/          # PRD, phases, tech stack, API reference, design spec
+├── docs/mobile/              # mobile planning docs
+├── .github/workflows/ci.yml
+└── docker-compose.yml
 ```
 
 ---
 
-## 🧪 Scripts
+## 🧪 Scripts & Tests
 
 ```bash
 # Backend
-npm start         # production start
-npm run dev       # nodemon
-npm run seed      # load demo data
-npm run seed:dry  # preview seed
+npm start                    # production start
+npm run dev                  # nodemon
+npm run seed                 # load demo data (clears DB first)
+npm run seed:dry             # preview seed
+npm run backfill:reputation  # recompute reputation from existing activity
+npm test                     # node:test + supertest (9 tests)
+node scripts/verify-openapi.js   # asserts the OpenAPI spec covers every route
 
 # Frontend
-npm run dev       # dev server
-npm run build     # production build
-npm run preview   # preview production build
+npm run dev
+npm run build
+npm run preview
+npm run lint                 # oxlint
+npm test                     # vitest
+
+# Mobile
+npm start                    # Expo
+npm run typecheck            # tsc --noEmit
+npm run lint
 ```
+
+Backend tests use a dedicated `ideaconnect_test` database and boot the app on an ephemeral
+port, so they never touch your dev data or clash with a running server. They require a local
+MongoDB on `localhost:27017`.
+
+**CI** (`.github/workflows/ci.yml`) runs on every push/PR to `main`: backend tests + OpenAPI
+verification, frontend lint/test/build, mobile typecheck/lint, and a Docker build with a live
+smoke test of the composed stack.
 
 ---
 
-## 🗺️ Roadmap / Future Work
+## 🗺️ Roadmap / Status
 
 - [x] Auth, profiles, dashboard
-- [x] Ideas, comments, likes, bookmarks, search
-- [x] Projects, team invites, tasks, milestones
+- [x] Ideas, comments, likes, bookmarks, search, drafts
+- [x] Projects, team invites, join requests, tasks (drag-and-drop), milestones
 - [x] Real-time chat (edit/delete/reactions/attachments/read receipts/presence)
-- [x] AI idea analysis
-- [x] Notifications (realtime + Expo push for mobile)
-- [x] Admin panel & moderation (incl. content reports)
+- [x] AI idea analysis + teammate suggestions
+- [x] Notifications (realtime + Expo push + inline actions)
+- [x] Admin panel & moderation (incl. content reports, audit logs)
 - [x] Mentor system (reviews, requests, directory)
 - [x] Reputation system
-- [x] Refresh-token sessions, API versioning (`/api/v1`), Swagger docs
-- [~] Automated test suite (basic smoke tests — needs expansion)
-- [ ] Docker / deployment config
-- [ ] React Native (Expo) mobile app
+- [x] Refresh-token sessions, API versioning (`/api/v1`), full OpenAPI docs
+- [x] React Native (Expo) mobile app — Phases 0–6
+- [x] Docker + docker-compose + GitHub Actions CI
+- [x] EAS build profiles (`mobile/eas.json`)
+- [~] Test coverage — unit/smoke tests only; no integration or E2E suite
+- [ ] Mobile Phase 7 polish (skeletons, error states, first EAS release build)
+- [ ] Closed-app push verification (needs an EAS build + `EXPO_PUBLIC_EAS_PROJECT_ID`)
 - [ ] Google OAuth login
 - [ ] Production SMTP / Cloudinary / OpenAI wiring
 - [ ] Re-enable email verification enforcement (bypassed for dev — see `backend/src/middlewares/auth.js`)
-
-### 📱 Mobile app notes
-The backend is React-Native-ready: REST under `/api/v1`, Socket.io realtime,
-Expo push notifications (`PUT /users/me/push-tokens` registers a device),
-and a Swagger spec at `/api/v1/docs` to build the client against.
-
-**Planning the mobile app?** Full documentation suite lives in [`docs/mobile/`](./docs/mobile/):
-[PRD](./docs/mobile/prd.md) · [Phases](./docs/mobile/phases.md) · [Tech Stack](./docs/mobile/tech-stack.md) ·
-[Folder Structure](./docs/mobile/folder-structure.md) · [API Reference](./docs/mobile/api-reference.md) ·
-[Design Spec](./docs/mobile/design-spec.md) · [Setup Guide](./docs/mobile/setup-guide.md)
 
 ---
 
