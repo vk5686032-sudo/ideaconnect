@@ -1,31 +1,46 @@
 # Dependencies
 node_modules/
+*/node_modules/
 
 # Build output
 dist/
-build/
+*/dist/
+.expo/
+mobile/.expo/
+mobile/ios/
+mobile/android/
 
-# Environment files (secrets — NEVER commit)
+# Environment — never commit real credentials
 .env
-.env.local
-.env.*.local
-CLAUDE.md
-
-# Keep the safe templates
+.env.*
 !.env.example
+
+# Uploads written by the Multer middleware
+uploads/
+*/uploads/
+
+# Test / coverage artefacts
+coverage/
+.nyc_output/
 
 # Logs
 *.log
 npm-debug.log*
+yarn-error.log*
 
-# OS
+# Editor / OS noise
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-# Editor
-.vscode/
-.idea/
+# Agent tooling output (regenerate with `graphify update .`)
+graphify-out/
 
-# Uploads / local data
-uploads/
-docs/
+# Scratch files from earlier exploration sessions
+chunk_*.txt
+*.claudesettings.json
+ast_extract.py
+check_cache.py
+detect.py
+summarize.py
