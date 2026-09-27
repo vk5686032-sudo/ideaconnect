@@ -8,9 +8,11 @@
     "scheme": "ideaconnect",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.ideaconnect.app"
     },
     "android": {
+      "package": "dev.ideaconnect.app",
       "adaptiveIcon": {
         "backgroundColor": "#eef2ff",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
