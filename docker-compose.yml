@@ -1,0 +1,78 @@
+# IdeaConnect — full local stack: MongoDB + backend + frontend.
+#
+#   docker compose up --build
+#   open http://localhost:8080
+#
+# The frontend is served by nginx on :8080 and reverse-proxies /api and
+# /socket.io to the backend, so the browser talks to a single origin.
+#
+# Demo data:  docker compose exec backend node src/seed.js
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Not published to the host; only the backend needs it.
+    expose:
+      - "27017"
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      MONGODB_URI: mongodb://mongo:27017/ideaconnect
+      # Override in a real deployment. Compose reads backend/.env if present.
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-use-32-chars}
+      JWT_EXPIRE: ${JWT_EXPIRE:-15m}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-600}
+      # Optional integrations. Left blank, email sends are skipped, uploads
+      # fall back to local disk and AI analysis returns mock scores.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      # Exposed so the mobile app and Swagger UI can reach it directly.
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Relative path: nginx proxies /api to the backend service.
+        VITE_API_URL: /api/v1
+        # Empty => the app connects to the page origin, which nginx proxies
+        # to the backend for /socket.io.
+        VITE_SOCKET_URL: ""
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo-data:
+  uploads:
