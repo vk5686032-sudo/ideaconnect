@@ -1,4 +1,84 @@
 const express = require('express');
+
+/**
+ * @openapi
+ * /auth/resend-verification:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Resend the verification email
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200: { description: Generic confirmation }
+ */
+
+/**
+ * @openapi
+ * /auth/verify-email/{token}:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Verify an email address from a token
+ *     description: "Deep-link target of the verification email (mobile scheme ideaconnect://verify-email/<token>)."
+ *     security: []
+ *     parameters:
+ *       - { in: path, name: token, required: true, schema: { type: string } }
+ *     responses:
+ *       200: { description: Email verified }
+ *       400: { description: Invalid or expired token }
+ */
+
+/**
+ * @openapi
+ * /auth/reset-password/{token}:
+ *   put:
+ *     tags: [Auth]
+ *     summary: Reset a password with a reset token
+ *     description: Returns a fresh AuthPayload and revokes the account's existing sessions.
+ *     security: []
+ *     parameters:
+ *       - { in: path, name: token, required: true, schema: { type: string } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password]
+ *             properties:
+ *               password: { type: string, minLength: 6 }
+ *     responses:
+ *       200: { description: New AuthPayload }
+ *       400: { description: Invalid or expired token, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+ */
+
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Request a password reset email
+ *     description: Always returns the same confirmation so accounts cannot be enumerated.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200: { description: Generic confirmation }
+ */
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
 const { protect } = require('../middlewares/auth');

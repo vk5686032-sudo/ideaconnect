@@ -1,4 +1,26 @@
 const express = require('express');
+
+/**
+ * @openapi
+ * /notifications/read-all:
+ *   put:
+ *     tags: [Notifications]
+ *     summary: Mark every notification as read
+ *     responses:
+ *       200: { description: All marked read }
+ */
+
+/**
+ * @openapi
+ * /notifications/{id}/read:
+ *   put:
+ *     tags: [Notifications]
+ *     summary: Mark one notification as read
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: string } }
+ *     responses:
+ *       200: { description: Marked read }
+ */
 /**
  * @openapi
  * /notifications:
