@@ -1,6 +1,9 @@
 import { io } from 'socket.io-client';
+import { resolveSocketUrl } from '../config/endpoints';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+// undefined => connect to the page origin. See config/endpoints.js: the old
+// `|| 'http://localhost:5000'` broke websockets in the Docker/CI build.
+const SOCKET_URL = resolveSocketUrl(import.meta.env.VITE_SOCKET_URL);
 
 let socket = null;
 

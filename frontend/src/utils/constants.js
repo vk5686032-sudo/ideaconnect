@@ -1,3 +1,5 @@
+import { resolveApiUrl, resolveSocketUrl } from '../config/endpoints';
+
 export const CATEGORIES = [
   { value: 'technology', label: 'Technology' },
   { value: 'business', label: 'Business' },
@@ -79,5 +81,7 @@ export const COMMON_SKILLS = [
   'DevOps',
 ];
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+// Same-origin by default — see config/endpoints.js for why an empty setting
+// must not fall back to http://localhost:5000.
+export const API_URL = resolveApiUrl(import.meta.env.VITE_API_URL);
+export const SOCKET_URL = resolveSocketUrl(import.meta.env.VITE_SOCKET_URL);
