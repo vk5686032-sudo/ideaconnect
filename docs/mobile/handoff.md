@@ -11,21 +11,53 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 > contract) — it was web-only, so no mobile change is required, but the same mistake would break a
 > mobile store if the persist adapter were copied. See the root `README.md` and `CLAUDE.md`.
 
+> **2026-09-28 note (backend security pass + Expo Go regression sweep).** Two separate things, so
+> the mobile-relevant part is listed first.
+>
+> *Mobile — verified on a real device this session (Android 15, Realme RMX3686, Expo Go 57):* all
+> five tabs render with live data; a realtime `notification` socket event renders **without the
+> InfiniteData cache crash** that was fixed on 09-27; tapping that notification deep-links into idea
+> detail; the reset screen is reachable while already signed in (via the Expo route, since Expo Go
+> cannot register `ideaconnect://`); the session **survives force-stop and relaunch** through native
+> SecureStore; deadline and push-unregister controls render; dark mode works; zero
+> `ReactNativeJS` errors, FATAL exceptions or ANRs across the sweep.
+>
+> ⚠️ This was a **regression sweep of the changed features, not the Phase 1–6 AC lists.** The
+> per-phase ACs below are still outstanding and are *not* marked as passed on the strength of the
+> above. The status table now splits "verified" from "pending" so this is not misread.
+>
+> *Backend — a security pass, none of which changed a mobile contract:* a stored-XSS path in chat
+> attachments (no `fileFilter` + attacker-controlled extension served via `express.static`), rate
+> limiting that was silently disabled behind the compose proxy (no `trust proxy`, plus a
+> private-IP skip that swallowed every proxied request), a compose volume that discarded every
+> upload on restart, `checkVerification` being a blanket no-op, account enumeration on
+> `forgot-password` and `resend-verification`, and undetected refresh-token replay. Backend tests
+> went 33 → 63. See the root `CLAUDE.md` `Known Gaps` for what was deliberately left open — in
+> particular the mobile-relevant one: the **refresh token is still in client storage**, so an XSS on
+> either client exfiltrates a 30-day credential.
+
 ---
 
 ## Status snapshot
 
-| Phase | Status | Notes |
-|---|---|---|
-| 0 — Scaffold & Theme | ✅ Code done · ✅ Device-verified (Expo Go 57, dark mode OK) | |
-| 1a — Auth core (client/store/login/logout) | ✅ Code done · ⏳ device ACs not yet tested | See combined checklist below |
-| 1b — Auth screens (register/forgot/reset/verify) | ✅ Code done · ⏳ shares 1a's pending device tests | All 5 (auth) routes exist; login footer links live |
-| 2 — Ideas feed & detail | ✅ Code done · ⏳ device ACs pending | Feed + detail + create/edit + bookmarks + AI Insights; see checklist |
-| 3 — Projects & tasks | ✅ Code done · ⏳ device ACs pending | Feed + detail + create + join flow + tasks (status picker, add) + milestones + Home widget; see checklist |
-| 4 — Chat | ✅ Code done · ✅ realtime verified on two devices | Socket service, chat list, realtime room, mini profiles, team chats |
-| 5 — Notifications & push | ✅ Code done · ✅ in-app verified (banner actions, badge, deep-links) | Closed-app push deferred to Phase 7 EAS build |
-| 6 — Profile, mentors & settings | ✅ Code done · ⏳ device ACs pending | Profile rebuild + edit (edu/exp field-array editors, avatar upload), mentors directory + my-requests, settings; see checklist |
-| 7 — Polish & release prep | ⬜ Next up after Phase 6 AC pass — includes EAS builds (validates closed-app push) | |
+Two states on purpose: "verified" is what was actually exercised on a device, "pending" is the
+rest of that phase's AC list. A single ⏳ used to hide real progress and invited re-testing work
+that already works.
+
+| Phase | Code | ✅ Verified on device | ⏳ Still pending |
+|---|---|---|---|
+| 0 — Scaffold & Theme | done | Expo Go 57 boot, 5 tabs, dark mode | — |
+| 1a — Auth core | done | **session survives force-stop + relaunch** (native SecureStore) | wrong-password toast, no logout loop; transparent access-token refresh; logout revokes the refresh token (AC #4 — now also test-verified, see below) |
+| 1b — Auth screens | done | reset screen reachable while already signed in | login footer links; register → Account Created → Home; forgot-password confirmation (AC #7 — now also test-verified); `ideaconnect://` reset deep link; verify-email fallback |
+| 2 — Ideas feed & detail | done | feed renders with live data; **notification deep-link lands in idea detail** | search/chips, like, bookmark, share, comments, create/edit, drafts |
+| 3 — Projects & tasks | done | tab renders with live data | progress bars, milestones, members, status change, My Tasks widget, create project, join-project request |
+| 4 — Chat | done | realtime on two devices (sends, typing, receipts, presence, attachments, emoji, join) | — |
+| 5 — Notifications & push | done | in-app verified; **socket event no longer crashes the cache**; deep-link; badge | closed-app push — blocked on the EAS build (Phase 7) |
+| 6 — Profile, mentors & settings | done | profile tab renders; deadline and push-unregister controls render | avatar upload, education/experience field-array editors, mentor directory search, request + accept → direct chat, change password, logout everywhere |
+| 7 — Polish & release prep | partial | deep-link scheme + `eas.json` declared | skeletons, error/retry on list screens, first EAS build, performance pass |
+
+Backend test count is 63 (was 33). Mobile is 31, with a known pre-existing handle leak — see
+`Known Gaps` in the root `CLAUDE.md`.
 
 ## Stack as built
 
@@ -70,16 +102,28 @@ Conventions locked so far: named-only exports for api modules (`import { authApi
 
 ## ⏳ Phase 1a+1b — pending device ACs (user, test together)
 
+Two of these are now covered by backend tests, but **not** by a device run, so they stay on this
+list. Tick them on device; do not tick them off the test alone.
+
+- **#4 logout → reuse attempt fails** — now enforced server-side *and* covered by
+  `backend/src/__tests__/refreshReuse.test.js`. Rotation marks the spent token `revokedAt` rather
+  than deleting it, and replaying a retired token revokes every session for the account. A
+  never-issued token still changes nothing. Test-verified; needs a device pass.
+- **#7 forgot-password with a random email → generic confirmation, no enumeration leak** — the
+  endpoint now returns one indistinguishable `200` and never reports whether an address exists;
+  covered by `backend/src/__tests__/authEnumeration.test.js`. (`register` is still an oracle — see
+  `Known Gaps`.) Test-verified; needs a device pass.
+
 Auth-core (1a):
 1. Wrong password → toast error, stays on login (no logout loop)
-2. Kill + reopen app while logged in → still authenticated (splash → Home)
+2. Kill + reopen app while logged in → still authenticated (splash → Home) — ✅ **verified 09-28**
 3. Manually expire access token → next API call auto-refreshes transparently
-4. Logout → server revokes refresh token (reuse attempt must fail)
+4. Logout → server revokes refresh token (reuse attempt must fail) — 🧪 test-verified, see above
 
 Screens (1b):
 5. Login footer "Sign up" / "Forgot password?" navigate correctly
 6. Register new account → auto-login held in memory → "Account Created" screen → Continue to App → Home tab authed; duplicate-email register shows server error toast
-7. Forgot password with random email → generic confirmation (no enumeration leak)
+7. Forgot password with random email → generic confirmation (no enumeration leak) — 🧪 test-verified, see above
 8. Reset via `ideaconnect://reset-password?token=…` deep link (adb: `adb shell am start -a android.intent.action.VIEW -d "<url>"`) → set new password → lands authed on Home; bad/expired token → invalid-link screen with "Request a New Link"
 9. Verify-email link (signed out) → auto-verifies or resend-by-email fallback works
 

@@ -8,6 +8,12 @@ Each phase ends with working, testable functionality. Acceptance criteria (AC) a
 Per-phase build detail and the outstanding device ACs live in [handoff.md](./handoff.md),
 which is the authoritative progress log. This file is the plan of record.
 
+> **2026-09-28:** the "device ACs pending" markers below are coarser than reality. A device
+> regression sweep ran against Android 15 / Expo Go 57 and passed several individual checks, and
+> two auth ACs are now covered by backend tests. [handoff.md](./handoff.md) splits each phase into
+> **verified** vs **still pending** — read that table rather than the per-phase AC lines here. No
+> phase is fully signed off below.
+
 ---
 
 ## Phase 0 — Scaffold & Theme 🟡 — ✅ verified on device
@@ -33,7 +39,7 @@ which is the authoritative progress log. This file is the plan of record.
 - [x] Expo Router guards: redirect unauthed → `(auth)/login`; authed users skip `(auth)`
 - [x] Logout button → `POST /auth/logout { refreshToken }` → clear storage
 
-**AC:** see [handoff.md](./handoff.md#-phase-1a1b--pending-device-acs-user-test-together) — 9 checks, all untested.
+**AC:** see [handoff.md](./handoff.md#-phase-1a1b--pending-device-acs-user-test-together) — 9 checks. 1 is device-verified (#2 relaunch), 2 are test-verified but not device-verified (#4 reuse, #7 enumeration), 6 untested.
 
 ## Phase 2 — Ideas Feed & Detail 🔴 — ✅ code done · ⏳ device ACs pending
 **Goal:** The core consumption loop: discover → read → interact.

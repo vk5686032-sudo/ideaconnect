@@ -59,12 +59,21 @@ frontend (lint/test/build), mobile (typecheck/lint), docker (build + live smoke 
 ### Backend (`backend/.env`)
 Copy from `.env.example`. Key variables:
 - `MONGODB_URI` — MongoDB connection (default: `mongodb://localhost:27017/ideaconnect`)
-- `JWT_SECRET` — JWT signing secret (must be changed from the placeholder)
+- `JWT_SECRET` — **required in production.** `docker compose` refuses to start without it
+  (`${JWT_SECRET:?…}`). Generate with `openssl rand -hex 48`. Never ship the `.env.example`
+  default — that value is in this repository's history. Rotating it signs every session out.
 - `JWT_EXPIRE` — access-token lifetime, default `15m`
 - `REFRESH_TOKEN_EXPIRE_DAYS` — refresh-token lifetime, default `30`
-- `FRONTEND_URL` — Allowed CORS origin (default: `http://localhost:5173`)
-- `RATE_LIMIT_MAX` — requests per 15 min per IP, default `600` (localhost exempt)
-- SMTP, Cloudinary, OpenAI keys are optional — the app degrades to mock/demo behavior
+- `FRONTEND_URL` — allowed CORS origin (default: `http://localhost:5173`). Comma-separated for
+  several; the list is split for both REST and Socket.io, so it works for both
+- `RATE_LIMIT_MAX` — global API requests per 15 min per IP, default `600`
+- `AUTH_RATE_LIMIT_MAX` — credential endpoints (`/auth/login`, `/register`, `/forgot-password`,
+  `/reset-password/:token`, `/resend-verification`), default `10` per 15 min. `/auth/refresh` is
+  deliberately **excluded** — the mobile client refreshes silently
+- `AUTH_RATE_LIMIT_WINDOW_MS` — auth bucket window, default `900000`
+- `SERVE_API_DOCS` — set `true` to expose the OpenAPI UI/spec in production (default: off)
+- SMTP, Cloudinary, OpenAI keys are optional — the app degrades to mock/demo behavior. Note that
+  without SMTP the mail endpoints still answer `200`, so a missing mail config is silent
 
 ### Frontend (`frontend/.env`)
 ```
@@ -118,6 +127,42 @@ EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push t
 
 - **Response envelopes**: backend uses `successResponse()` / `errorResponse()` from
   `src/utils/response.js` → `{ success, message, data }`, paginated adds `pagination`
+- **`src/utils/ip.js` owns the rate-limit skip decision; `src/utils/origins.js` owns the CORS
+  allowlist.** Both the global `/api` limiter and the auth limiter call
+  `shouldSkipLimiting(config.nodeEnv)`, and both the REST and Socket.io CORS layers call
+  `getAllowedOrigins()`. They were two hardcoded arrays that had already drifted — the socket list
+  was missing two origins and read `process.env.FRONTEND_URL` as a single literal, so a
+  comma-separated value worked for REST and silently broke websockets. Do not re-introduce a
+  hardcoded origin list or a private-IP skip in either place: skipping private IPs in production is
+  exactly how rate limiting ended up disabled behind the compose proxy. `app.set('trust proxy', 1)`
+  in `app.js` is what makes the real client address visible; without it every request arrives as the
+  proxy's own address.
+- **CORS in production carries only `FRONTEND_URL`.** The `localhost:5173/5174/8081` entries are
+  development conveniences and are dropped when `NODE_ENV=production`, because CORS runs with
+  `credentials: true` and a local page would otherwise get credentialed cross-origin API access.
+  `FRONTEND_URL='*'` still fails closed — the matcher is an exact allowlist and never reflects the
+  request, so there is no wildcard path to credentialed access.
+- **Chat attachments are allow-listed, and the stored extension is ours.** `uploadChatFile` in
+  `src/middlewares/upload.js` takes the extension from its own map, never from the request, and the
+  mimetype never decides acceptance on its own (it is attacker-controlled; it is only cross-checked
+  for images). `/uploads` is served with `nosniff` + `Content-Disposition: attachment`. This route
+  once had no `fileFilter` at all and kept the uploader's extension, which is a stored-XSS path via
+  `express.static`'s extension-derived `Content-Type`. `documentFilter` uses `&&`, not `||`.
+- **`checkVerification` is production-gated**, not a blanket no-op. `User.isVerified` defaults to
+  `false` and no seed sets it, so the first production deploy **must** run the one-time migration or
+  every existing account is locked out of all 16 write routes:
+  `npm run backfill:verified` (dry run) then `npm run backfill:verified -- --apply`.
+- **Refresh-token rotation sets `revokedAt`; it does not delete the entry.** Retired hashes are kept
+  for 24 h so that replaying a rotated-out token is *detectable* — a replay revokes every session for
+  the account, because a token that leaked and a client that double-sent are indistinguishable.
+  Only *live* tokens count toward the 5-device cap: counting retired ones would age a client that
+  refreshes every 15 minutes out of its own account, and pruning them immediately would leave a
+  replay with nothing to match. A never-issued token changes nothing, so the endpoint is not a DoS
+  against a user's other devices.
+- **`forgot-password` and `resend-verification` return one indistinguishable `200`** and never
+  report whether an address is registered. An SMTP failure is logged rather than returned, since a
+  `500` would itself be an enumeration oracle. `register` is the deliberate exception — see
+  `KNOWN GAPS`.
 - **Auth flow**: token pair in storage, attached by an axios interceptor, user in Zustand.
   Access tokens last ~15 min; the interceptor performs a **single-flight** refresh and retries
   the original request once. `AUTH_ENDPOINTS` in `axios.js` must never trigger a global logout.
@@ -177,8 +222,30 @@ EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push t
 | Student | priya@ideaconnect.dev | password123 |
 | Developer | james@ideaconnect.dev | password123 |
 
+## Known Gaps
+
+Deliberately not fixed, with the reason. **These are decisions, not oversights** — before "fixing"
+one, check the reason, because several have a real cost to closing.
+
+| Gap | Why it is open | Revisit when |
+|---|---|---|
+| `POST /auth/register` returns `400 "Email already registered"`, so it is still an account-enumeration oracle | `forgot-password` and `resend-verification` were fixed; register was left because the non-enumerating version is a UX decision (silent success, or a "check your email" flow) and the OpenAPI entry documents the current behaviour | You are willing to change the register UX |
+| Refresh token lives in `localStorage` (web) / `sessionStorage`, so any XSS exfiltrates a 30-day credential | The correct fix is an httpOnly + Secure + SameSite cookie, but it touches the whole auth flow, the axios interceptor and the mobile client. That is a project, not a patch. The 2026-09-28 XSS hole that made this urgent is closed | Scheduling an auth-flow refactor |
+| `mobile` Jest suite passes 31/31 but the process never exits — a pre-existing handle leak (pre-existing as of 2026-09-28, unrelated to that day's work) | `forceExit` masks it rather than fixing it | Next time you touch the mobile test setup |
+| `swagger-jsdoc` is effectively unmaintained and pulls a deprecated `glob` chain | The generated spec is verified 117/117 against real routes, so it is load-bearing for CI. Replacing it means hand-writing or serving a static `openapi.json` | If it blocks a dependency audit |
+| `zod` is v4 in the backend and v3 in the frontend, duplicated with no shared source of truth | A workspace/shared package is more structure than the project currently has | A third consumer appears |
+| `frontend/package.json` pins `lucide-react ^1.28.0`, but the real package is 0.x | Pin looks unresolvable or stale; unverified against the registry | Next dependency review |
+| `notificationService.create` returns `null` on failure instead of throwing, across 21 call sites | Deliberate: it stops a failed notification from turning a successful write into a `5xx`. Real production cost is that a silently failed notification is invisible | Notifications need retry/queueing |
+
 ## API Surface
 
-All endpoints are prefixed `/api/v1` (a legacy `/api/*` alias also exists). Swagger UI is at
-`/api/v1/docs`; the raw spec is `/api/v1/docs.json`. Route groups: `auth`, `users`, `ideas`,
-`projects`, `tasks`, `chats`, `notifications`, `mentors`, `reports`, `ai`, `admin`, `health`.
+All endpoints are prefixed `/api/v1` (a legacy `/api/*` alias also exists). Route groups: `auth`,
+`users`, `ideas`, `projects`, `tasks`, `chats`, `notifications`, `mentors`, `reports`, `ai`,
+`admin`, `health`.
+
+Swagger UI is at `/api/v1/docs`; the raw spec is `/api/v1/docs.json`. **Both are development-only**
+and return `404` in production unless `SERVE_API_DOCS=true` — the spec is a complete map of every
+route, its schemas and its error shapes, and it used to be served unauthenticated there.
+
+To confirm coverage after changing a route (reads the spec module directly, not the HTTP route, so
+it is unaffected by the production gate): `node scripts/verify-openapi.js`.
