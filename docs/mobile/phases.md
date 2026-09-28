@@ -39,7 +39,7 @@ which is the authoritative progress log. This file is the plan of record.
 - [x] Expo Router guards: redirect unauthed → `(auth)/login`; authed users skip `(auth)`
 - [x] Logout button → `POST /auth/logout { refreshToken }` → clear storage
 
-**AC:** see [handoff.md](./handoff.md#-phase-1a1b--pending-device-acs-user-test-together) — 9 checks. 1 is device-verified (#2 relaunch), 2 are test-verified but not device-verified (#4 reuse, #7 enumeration), 6 untested.
+**AC:** see [handoff.md](./handoff.md#-phase-1a1b--pending-device-acs-user-test-together) — 9 checks. 5 verified (2 on device, 3 in a browser), 1 test-verified only (#4 reuse), 3 untested (#3 transparent refresh, the `ideaconnect://` deep link which needs an EAS build, and the verify-email link).
 
 ## Phase 2 — Ideas Feed & Detail 🔴 — ✅ code done · ⏳ device ACs pending
 **Goal:** The core consumption loop: discover → read → interact.

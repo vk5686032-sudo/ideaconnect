@@ -11,7 +11,7 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 > contract) — it was web-only, so no mobile change is required, but the same mistake would break a
 > mobile store if the persist adapter were copied. See the root `README.md` and `CLAUDE.md`.
 
-> **2026-09-28 note (backend security pass + Expo Go regression sweep).** Two separate things, so
+> **2026-09-28 note (backend security pass + acceptance-criteria sweep).** Two separate things, so
 > the mobile-relevant part is listed first.
 >
 > *Mobile — verified on a real device this session (Android 15, Realme RMX3686, Expo Go 57):* all
@@ -32,9 +32,42 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 > private-IP skip that swallowed every proxied request), a compose volume that discarded every
 > upload on restart, `checkVerification` being a blanket no-op, account enumeration on
 > `forgot-password` and `resend-verification`, and undetected refresh-token replay. Backend tests
-> went 33 → 63. See the root `CLAUDE.md` `Known Gaps` for what was deliberately left open — in
+> went 33 → 69. See the root `CLAUDE.md` `Known Gaps` for what was deliberately left open — in
 > particular the mobile-relevant one: the **refresh token is still in client storage**, so an XSS on
 > either client exfiltrates a 30-day credential.
+>
+> *AC sweep, second pass.* Auth ACs were re-run to check the 09-28 password change did not break
+> login. This found and fixed three bugs (see below). Driving long forms on the device via `adb`
+> proved impractical — masked password fields, Chrome autofill injecting a real name into the
+> register form, and `input text` truncating at spaces — so the auth flows were completed against
+> **`localhost:5173` in a real browser instead**. The backend, validation schemas and query layer
+> are shared with mobile, so these are genuine contract checks; only the platform-specific bits
+> (SecureStore, image picker, share sheet, OS dark mode, `ideaconnect://`) still need the device.
+>
+> | AC | Result | Where |
+> |---|---|---|
+> | 1a #1 wrong password → error, stays on login, no logout loop | ✅ pass | device |
+> | 1b #5 login footer "Sign up" / "Forgot password?" navigate | ✅ pass | device |
+> | 1b #6 register → auto-login → app, duplicate email shows server error | ✅ pass | browser |
+> | 1b #7 forgot-password generic confirmation, no enumeration | ✅ pass | browser |
+> | 1b #8 reset via token → auto-login | ✅ pass (web route) | browser |
+> | 8-char minimum enforced on the reset form | ✅ pass | browser |
+> | 1a #3 expired access token refreshes transparently | ⏳ not run | — |
+> | 1b #8 `ideaconnect://` deep link | 🚫 blocked: Expo Go cannot register the scheme | needs EAS |
+> | 1b #9 verify-email link | ⏳ not run | — |
+> | Phase 2 / 3 / 6 ACs | ⏳ not run | — |
+>
+> Bugs found by running the ACs, all three invisible to the unit tests:
+>
+> 1. **The login forms enforced the *signup* minimum.** They shared a literal with the signup
+>    forms, so raising the minimum to 8 also blocked login of any account created before the
+>    change — those users have a 6-char password, the form refused to submit, and the backend
+>    (correctly `min(1)`) was never reached. Anyone with an older short password would have been
+>    locked out of mobile *and* web with no way to sign in. Signup and login are now separate.
+> 2. **Settings placeholders still read "New password (min 6)"** in both clients while the schema
+>    said 8.
+> 3. **The OpenAPI spec published `minLength: 6`** in three places, so the documented contract did
+>    not match enforcement.
 
 ---
 
@@ -47,8 +80,8 @@ that already works.
 | Phase | Code | ✅ Verified on device | ⏳ Still pending |
 |---|---|---|---|
 | 0 — Scaffold & Theme | done | Expo Go 57 boot, 5 tabs, dark mode | — |
-| 1a — Auth core | done | **session survives force-stop + relaunch** (native SecureStore) | wrong-password toast, no logout loop; transparent access-token refresh; logout revokes the refresh token (AC #4 — now also test-verified, see below) |
-| 1b — Auth screens | done | reset screen reachable while already signed in | login footer links; register → Account Created → Home; forgot-password confirmation (AC #7 — now also test-verified); `ideaconnect://` reset deep link; verify-email fallback |
+| 1a — Auth core | done | **session survives force-stop + relaunch** (native SecureStore); **wrong password → error, stays on login, no logout loop** | transparent access-token refresh (AC #3, not run); logout revokes the refresh token (AC #4 — test-verified) |
+| 1b — Auth screens | done | reset screen reachable while already signed in; **register → auto-login → dashboard** and duplicate-email error; **forgot-password generic, both branches identical**; **reset via a real token → auto-login** | login footer links; the mobile "Account Created" interstitial; `ideaconnect://` reset deep link (needs EAS); verify-email fallback |
 | 2 — Ideas feed & detail | done | feed renders with live data; **notification deep-link lands in idea detail** | search/chips, like, bookmark, share, comments, create/edit, drafts |
 | 3 — Projects & tasks | done | tab renders with live data | progress bars, milestones, members, status change, My Tasks widget, create project, join-project request |
 | 4 — Chat | done | realtime on two devices (sends, typing, receipts, presence, attachments, emoji, join) | — |
@@ -56,8 +89,16 @@ that already works.
 | 6 — Profile, mentors & settings | done | profile tab renders; deadline and push-unregister controls render | avatar upload, education/experience field-array editors, mentor directory search, request + accept → direct chat, change password, logout everywhere |
 | 7 — Polish & release prep | partial | deep-link scheme + `eas.json` declared | skeletons, error/retry on list screens, first EAS build, performance pass |
 
-Backend test count is 63 (was 33). Mobile is 31, with a known pre-existing handle leak — see
+Backend test count is 69 (was 33). Mobile is 31, with a known pre-existing handle leak — see
 `Known Gaps` in the root `CLAUDE.md`.
+
+**Driving forms on-device over `adb` is impractical** and cost a lot of time on 09-28: masked
+password fields make a character count unreadable, Chrome autofill injects a real name into the
+register form, `input text` truncates at spaces, and clearing a field with repeated backspaces
+eventually escapes into system settings. For anything that is not platform-specific, verify the
+auth and CRUD flows against `localhost:5173` in a browser instead — the backend, zod schemas and
+query layer are shared, so a bug found there is a real bug. Reserve the device for SecureStore, the
+image picker, the native share sheet, OS dark mode, and `ideaconnect://` deep links.
 
 ## Stack as built
 
@@ -110,9 +151,13 @@ list. Tick them on device; do not tick them off the test alone.
   than deleting it, and replaying a retired token revokes every session for the account. A
   never-issued token still changes nothing. Test-verified; needs a device pass.
 - **#7 forgot-password with a random email → generic confirmation, no enumeration leak** — the
-  endpoint now returns one indistinguishable `200` and never reports whether an address exists;
-  covered by `backend/src/__tests__/authEnumeration.test.js`. (`register` is still an oracle — see
-  `Known Gaps`.) Test-verified; needs a device pass.
+  endpoint returns one indistinguishable `200` and never reports whether an address exists;
+  covered by `backend/src/__tests__/authEnumeration.test.js` (`register` is still an oracle — see
+  `Known Gaps`). ✅ **verified in a browser 09-28**: an unregistered address and a registered one
+  both returned "If an account exists for … A password reset link has been sent."
+- **#6 register → auto-login → app** — ✅ **verified in a browser 09-28**; the duplicate-email
+  sub-check shows the server error in a `role="status"` live region. The mobile-only
+  "Account Created" interstitial between register and Home is still untested on device.
 
 Auth-core (1a):
 1. Wrong password → toast error, stays on login (no logout loop)
