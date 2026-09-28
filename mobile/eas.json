@@ -11,14 +11,15 @@
         "EXPO_PUBLIC_SOCKET_URL": "${EXPO_PUBLIC_SOCKET_URL}"
       }
     },
+    "_comment_env": "EXPO_PUBLIC_* are inlined into the JS bundle at BUILD time, so an EAS build bakes in whatever is resolved here. scripts/lan-ip.js only helps local `npm start` - it cannot run on EAS's build servers, and a private LAN address is unreachable from the internet. The development profile below therefore ships a placeholder that will not resolve, on purpose: replace it with an address the built app can actually reach, or supply it from the environment (eas build --profile production, with EXPO_PUBLIC_API_URL set) rather than committing a private IP.",
     "development": {
       "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.0.156:5000/api/v1",
-        "EXPO_PUBLIC_SOCKET_URL": "http://192.168.0.156:5000"
+        "EXPO_PUBLIC_API_URL": "REPLACE_WITH_A_REACHABLE_HOST",
+        "EXPO_PUBLIC_SOCKET_URL": "REPLACE_WITH_A_REACHABLE_HOST"
       },
       "ios": {
         "simulator": true
