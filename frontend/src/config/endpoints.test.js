@@ -1,4 +1,4 @@
-// No DOM, no network — these are pure string decisions that decided where every
+// No DOM, no network â€” these are pure string decisions that decided where every
 // API call and websocket went.
 import { describe, it, expect } from 'vitest';
 import { resolveApiUrl, resolveSocketUrl } from '../config/endpoints';
@@ -23,7 +23,7 @@ describe('resolveSocketUrl', () => {
   });
 
   it('honours an explicit absolute URL', () => {
-    expect(resolveSocketUrl('http://192.168.0.156:5000')).toBe('http://192.168.0.156:5000');
+    expect(resolveSocketUrl('http://203.0.113.10:5000')).toBe('http://203.0.113.10:5000');
   });
 
   it('never returns a localhost default', () => {
@@ -42,7 +42,7 @@ describe('resolveApiUrl', () => {
   });
 
   it('honours an explicit URL', () => {
-    expect(resolveApiUrl('http://192.168.0.156:5000/api/v1')).toBe('http://192.168.0.156:5000/api/v1');
+    expect(resolveApiUrl('http://203.0.113.10:5000/api/v1')).toBe('http://203.0.113.10:5000/api/v1');
   });
 
   it('keeps the /api/v1 suffix when handed a bare origin', () => {

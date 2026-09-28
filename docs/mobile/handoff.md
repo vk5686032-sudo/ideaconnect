@@ -104,7 +104,7 @@ image picker, the native share sheet, OS dark mode, and `ideaconnect://` deep li
 
 Expo SDK 57 (`expo@57.0.15`, RN 0.86.2, React 19.2.3, TS ~6.0 strict) · Expo Router · NativeWind 4.2.6 + **Tailwind v3.4** (`nativewind/preset`, `darkMode: 'class'`) · Zustand 5 (no persist — SecureStore hydration) · TanStack Query 5 · axios · socket.io-client (chat realtime since Phase 4) · RHF + zod · expo-secure-store / notifications / image / image-picker / haptics · lucide-react-native · react-native-toast-message 2.4 · Inter via `@expo-google-fonts/inter` · ESLint via `eslint-config-expo/flat.js`.
 
-`.env`: `EXPO_PUBLIC_API_URL=http://192.168.0.156:5000/api/v1` (Wi-Fi LAN IP), `EXPO_PUBLIC_SOCKET_URL=http://192.168.0.156:5000`. Emulator alt lines commented in `.env.example`.
+`.env`: only `EXPO_PUBLIC_EAS_PROJECT_ID` is set by hand. `EXPO_PUBLIC_API_URL` / `EXPO_PUBLIC_SOCKET_URL` are generated into `.env.local` (gitignored) by `scripts/lan-ip.js` on every `npm start` — it detects the LAN address and health-checks the backend on it, so nothing goes stale when the wifi changes. `LAN_IP=<addr> npm start` overrides it; `10.0.2.2` for the emulator.
 
 ## Environment gotchas (Windows + npm 12)
 

@@ -83,11 +83,23 @@ VITE_SOCKET_URL=http://localhost:5000
 Leave both empty to use the same origin (nginx/Docker proxies `/api` and `/socket.io`).
 
 ### Mobile (`mobile/.env`)
+
+Only two things are set by hand:
+
 ```
-EXPO_PUBLIC_API_URL=http://192.168.0.156:5000/api/v1   # LAN IP for a physical device
-EXPO_PUBLIC_SOCKET_URL=http://192.168.0.156:5000
-EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push tokens
+EXPO_PUBLIC_EAS_PROJECT_ID=    # needed for real push tokens; empty in Expo Go
 ```
+
+`EXPO_PUBLIC_API_URL` / `EXPO_PUBLIC_SOCKET_URL` are **not** set by hand. `npm start` runs
+`mobile/scripts/lan-ip.js` first (a `prestart` hook), which detects this machine's LAN address,
+verifies the backend answers on it, and writes `mobile/.env.local` — gitignored, so a stale address
+is never committed and the URL follows you when the wifi changes. Override detection with
+`LAN_IP=<address> npm start` (use `10.0.2.2` for an Android emulator; an override is trusted without
+a health check because that alias only resolves from inside the emulator).
+
+The web app needs none of this: `frontend/vite.config.js` proxies `/api` and `/socket.io`, so the
+browser sees a single origin and no IP appears anywhere. The backend keeps binding every interface
+via `server.listen(PORT)` — it has never been pinned to a specific address, only the clients were.
 
 ## Architecture
 
@@ -212,6 +224,40 @@ EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push t
   `setAuthClientListener()`; `authSlice` registers itself.
 - **Socket transport must keep `polling` in the fallback list.** Websocket-only hard-fails behind
   proxies that block the upgrade, and with infinite retries that fails silently forever.
+- **The signup minimum password length is enforced in three places that share no constant:**
+  `PASSWORD_MIN` in `src/validations/auth.validation.js` (the exported authority), the Mongoose
+  `minlength` on `User.password`, and a copy in each client — `frontend` Login/Register/
+  ResetPassword/Settings and `mobile` login/register/reset-password/settings. Change them
+  together; changing only the backend means the client accepts a password the server rejects.
+  `passwordPolicy.test.js` asserts the model matches `PASSWORD_MIN`.
+- **Login is deliberately `min(1)`, not the signup minimum.** This is not an oversight. Accounts
+  created before the minimum was raised still hold shorter passwords; a signup minimum on the
+  login form refuses to submit, the backend is never reached, and the user is locked out of both
+  clients with no way to sign in. It happened when a blanket replace over `min(6, …)` rewrote the
+  login forms along with the signup ones — a security change turned into a self-inflicted outage.
+  `passwordPolicy.test.js` also reads both client login files and fails if either is not `min(1)`.
+  Keep that test's fail-on-missing-path behaviour: a silently-skipped assertion looks like
+  coverage and is worse than none.
+- **An empty `VITE_SOCKET_URL`/`EXPO_PUBLIC_*` means same-origin, not localhost.** Resolution
+  lives in `frontend/src/config/endpoints.js`. The previous `|| 'http://localhost:5000'` broke
+  websockets in the Docker build, because `""` is falsy so the `||` replaced it and every visitor's
+  browser dialled port 5000 on their own machine. `socket.io-client` treats `undefined` as
+  "connect to the page origin", which is what CI and the nginx proxy both need.
+
+## Testing
+
+- **Verify anything that is not platform-specific in a browser against `localhost:5173`.** The
+  backend, the zod schemas and the query layer are shared with mobile, so a bug found there is a
+  real bug. A change that only looks at unit tests misses this whole class.
+- **Reserve the device for** SecureStore, the image picker, the native share sheet, OS dark mode,
+  and `ideaconnect://` deep links. Expo Go cannot register a custom URL scheme, so those need an
+  EAS build.
+- **Driving forms over `adb` is impractical**, for reasons worth not re-deriving: masked password
+  fields make a character count unreadable, `input text` truncates at spaces, Chrome autofill
+  injects a real name into the register form, and clearing a field with repeated backspaces
+  escapes into system settings. Detail in `docs/mobile/handoff.md`.
+- `mobile` Jest passes 31/31 but the process does not exit — a pre-existing handle leak, so
+  `--forceExit` is needed locally. CI runs `typecheck`/`lint` only; see `Known Gaps`.
 
 ## Demo Accounts
 

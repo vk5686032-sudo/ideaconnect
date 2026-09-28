@@ -79,8 +79,8 @@ Version policy: install native modules with `npx expo install <pkg>` so versions
 
 | Concern | Web | Mobile |
 |---|---|---|
-| API base | `VITE_API_URL=http://192.168.0.156:5000/api/v1` | `EXPO_PUBLIC_API_URL=same` |
-| Socket URL | `VITE_SOCKET_URL` | `EXPO_PUBLIC_SOCKET_URL` |
+| API base | `VITE_API_URL=/api/v1` (proxied) | `EXPO_PUBLIC_API_URL` (auto-detected into `.env.local`) |
+| Socket URL | `VITE_SOCKET_URL` (empty = same origin) | `EXPO_PUBLIC_SOCKET_URL` (auto-detected) |
 | Token storage | localStorage | expo-secure-store |
 | Refresh logic | `frontend/src/api/axios.js` | `src/api/client.ts` (port) |
 | Theme source | `tailwind.config.js` | `tailwind.config.js` (mobile) — copy tokens |

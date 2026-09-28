@@ -33,19 +33,34 @@ Then wire NativeWind + path aliases per [folder-structure.md](./folder-structure
 
 ## 2. Environment variables
 
-Create `mobile/.env`:
+Only one value is set by hand:
 
 ```env
-# Physical device on the same Wi-Fi as the backend:
-EXPO_PUBLIC_API_URL=http://192.168.0.156:5000/api/v1
-EXPO_PUBLIC_SOCKET_URL=http://192.168.0.156:5000
-
-# Android emulator instead? The host machine is 10.0.2.2:
-# EXPO_PUBLIC_API_URL=http://10.0.2.2:5000/api/v1
-# EXPO_PUBLIC_SOCKET_URL=http://10.0.2.2:5000
+EXPO_PUBLIC_EAS_PROJECT_ID=    # needed for real push tokens; empty in Expo Go
 ```
 
-> **Find your LAN IP:** `ipconfig` → IPv4 Address of your Wi-Fi adapter. It changes per network — update `.env` when you switch networks. Restart the dev server after any `.env` change (`npx expo start -c` to clear cache).
+`EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_SOCKET_URL` are **generated for you**. `npm start` runs
+`mobile/scripts/lan-ip.js` first, which finds this machine's LAN address, checks the backend
+answers on it, and writes `mobile/.env.local` (gitignored). There is nothing to update when you
+change network.
+
+```bash
+cd mobile
+npm start
+```
+
+If it picks the wrong adapter, or you are on an emulator, override it:
+
+```bash
+LAN_IP=10.0.2.2 npm start     # Android emulator: the host is 10.0.2.2
+```
+
+An override is trusted without a health check, because `10.0.2.2` only resolves to the host from
+*inside* the emulator — nothing answers on the host's own network stack, so probing it would reject
+a working setup.
+
+> The **web** app needs none of this. `frontend/vite.config.js` proxies `/api` and `/socket.io`, so
+> the browser talks to one origin and no address is ever configured.
 
 CORS note: RN clients send no Origin header; the backend already allows that, so no CORS changes are needed.
 
