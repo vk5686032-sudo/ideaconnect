@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const mentorApi = {
+const mentorApi = {
   getMentors: (params) => api.get('/mentors', { params }),
   sendRequest: (mentorId, data) => api.post(`/mentors/${mentorId}/requests`, data),
   getMyRequests: () => api.get('/mentors/requests/my'),

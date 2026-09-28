@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const adminApi = {
+const adminApi = {
   // Dashboard & analytics
   getStats: () => api.get('/admin/stats'),
   getAnalytics: () => api.get('/admin/analytics'),

@@ -80,10 +80,6 @@ export async function refreshAccessTokenNow(): Promise<string | null> {
   return refreshPromise;
 }
 
-function refreshAccessToken(): Promise<string | null> {
-  return refreshAccessTokenNow();
-}
-
 async function hardLogout(): Promise<void> {
   if (!authClientListener) {
     await clearTokens();
@@ -118,7 +114,7 @@ api.interceptors.response.use(
 
       const refreshToken = await getRefreshToken();
       if (refreshToken) {
-        const newToken = await refreshAccessToken();
+        const newToken = await refreshAccessTokenNow();
         if (newToken) {
           original.headers = {
             ...original.headers,

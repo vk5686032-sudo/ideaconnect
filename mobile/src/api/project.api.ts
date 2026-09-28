@@ -30,6 +30,7 @@ export const projectApi = {
     description: string;
     technologies: string[];
     visibility: ProjectVisibility;
+    deadline?: string;
   }) => api.post<ApiSuccess<Project>>('/projects', data),
 
   deleteProject: (id: string) =>

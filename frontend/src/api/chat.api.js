@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const chatApi = {
+const chatApi = {
   createDirect: (recipientId) => api.post('/chats/direct', { recipientId }),
   createGroup: (data) => api.post('/chats/group', data),
   getMy: () => api.get('/chats'),

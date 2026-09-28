@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const projectApi = {
+const projectApi = {
   getAll: (params) => api.get('/projects', { params }),
   getById: (id) => api.get(`/projects/${id}`),
   create: (data) => api.post('/projects', data),

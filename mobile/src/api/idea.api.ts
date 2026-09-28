@@ -52,8 +52,6 @@ export const ideaApi = {
   toggleBookmark: (id: string) =>
     api.post<ApiSuccess<{ isBookmarked: boolean }>>(`/ideas/${id}/bookmark`),
 
-  getMyIdeas: () => api.get<ApiSuccess<Idea[]>>('/ideas/my/ideas'),
-
   getMyBookmarks: () => api.get<ApiSuccess<Idea[]>>('/ideas/my/bookmarks'),
 
   addMentorReview: (id: string, data: { review: string; rating: number }) =>
@@ -62,19 +60,11 @@ export const ideaApi = {
       data
     ),
 
-  deleteMentorReview: (id: string) =>
-    api.delete<ApiSuccess<null>>(`/ideas/${id}/review`),
-
   getComments: (ideaId: string) =>
     api.get<ApiSuccess<IdeaComment[]>>(`/ideas/${ideaId}/comments`),
 
   addComment: (ideaId: string, data: { content: string; parentId?: string }) =>
     api.post<ApiSuccess<IdeaComment>>(`/ideas/${ideaId}/comments`, data),
-
-  updateComment: (commentId: string, content: string) =>
-    api.put<ApiSuccess<IdeaComment>>(`/ideas/comments/${commentId}`, {
-      content,
-    }),
 
   deleteComment: (commentId: string) =>
     api.delete<ApiSuccess<null>>(`/ideas/comments/${commentId}`),

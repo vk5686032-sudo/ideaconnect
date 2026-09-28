@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const reportApi = {
+const reportApi = {
   create: (data) => api.post('/reports', data),
 };
 

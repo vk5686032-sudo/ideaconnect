@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const userApi = {
+const userApi = {
   getAll: (params) => api.get('/users', { params }),
   getById: (id) => api.get(`/users/${id}`),
   updateAvatar: (formData) =>

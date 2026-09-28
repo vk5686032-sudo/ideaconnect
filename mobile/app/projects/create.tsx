@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   View,
@@ -26,6 +27,13 @@ const projectFormSchema = z.object({
     .max(200, 'Title cannot exceed 200 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   technologiesInput: z.string(),
+  // Optional, but must be a real calendar date when present.
+  deadline: z
+    .string()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Date.parse(v)), {
+      message: 'Enter a valid date',
+    }),
 });
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
@@ -41,7 +49,7 @@ export default function CreateProjectScreen() {
     formState: { errors },
   } = useForm<ProjectFormData>({
     resolver: zodResolver(projectFormSchema),
-    defaultValues: { title: '', description: '', technologiesInput: '' },
+    defaultValues: { title: '', description: '', technologiesInput: '', deadline: '' },
   });
 
   const onSubmit = async (data: ProjectFormData) => {
@@ -56,6 +64,7 @@ export default function CreateProjectScreen() {
         description: data.description.trim(),
         technologies,
         visibility,
+        ...(data.deadline ? { deadline: data.deadline } : {}),
       });
       Toast.show({ type: 'success', text1: 'Project created' });
       router.back();
@@ -123,6 +132,33 @@ export default function CreateProjectScreen() {
                   <Text className="mt-1 font-sans text-xs text-gray-400 dark:text-gray-500">
                     Comma separated
                   </Text>
+                </View>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="deadline"
+              render={({ field: { onChange, value } }) => (
+                <View>
+                  <Input
+                    label="Deadline (optional)"
+                    value={value}
+                    onChangeText={onChange}
+                    placeholder="YYYY-MM-DD"
+                    keyboardType="numbers-and-punctuation"
+                    error={errors.deadline?.message}
+                  />
+                  {!!value && (
+                    <Pressable
+                      onPress={() => onChange('')}
+                      accessibilityRole="button"
+                      className="mt-1.5 self-start">
+                      <Text className="font-sans text-xs text-primary-600 dark:text-primary-400">
+                        Remove deadline
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
             />

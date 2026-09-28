@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const aiApi = {
+const aiApi = {
   analyzeIdea: (id) => api.post(`/ai/ideas/${id}/analyze`),
   getSimilarIdeas: (id) => api.get(`/ai/ideas/${id}/similar`),
   improveTitle: (data) => api.post('/ai/improve/title', data),

@@ -4,10 +4,6 @@ import useAuthStore from '../store/authSlice';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const getStoredValue = (key) => localStorage.getItem(key) || sessionStorage.getItem(key);
-const removeStoredValue = (key) => {
-  localStorage.removeItem(key);
-  sessionStorage.removeItem(key);
-};
 const setStoredValue = (key, value) => {
   const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
   storage.setItem(key, value);
@@ -45,16 +41,11 @@ const AUTH_ENDPOINTS = [
   '/auth/refresh',
 ];
 
-// Full session teardown (store + persisted keys)
+// Full session teardown (store + persisted keys).
+// logout() clears token/refreshToken from both storages and rewrites the
+// persisted auth envelope to its logged-out state, so nothing else is needed
+// here — and removing 'auth-storage' beforehand would be undone by it anyway.
 const hardLogout = () => {
-  removeStoredValue('token');
-  removeStoredValue('refreshToken');
-  localStorage.removeItem('user');
-  try {
-    localStorage.removeItem('auth-storage');
-  } catch {
-    /* ignore */
-  }
   useAuthStore.getState().logout();
   window.location.href = '/login';
 };

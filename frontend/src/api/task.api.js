@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const taskApi = {
+const taskApi = {
   // Tasks
   getMy: () => api.get('/tasks/my'),
   getByProject: (projectId) => api.get(`/projects/${projectId}/tasks`),

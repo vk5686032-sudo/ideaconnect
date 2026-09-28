@@ -39,7 +39,13 @@ function attachLifecycle(target: Socket): void {
 
   target.on('connect_error', (rawError) => {
     const message = String((rawError as Error)?.message ?? '');
-    if (!/token|auth/i.test(message)) return;
+
+    // An auth failure is the only one we can fix by renewing the token. A
+    // network/proxy failure is not, so surface it rather than silently looping.
+    if (!/token|auth/i.test(message)) {
+      console.warn('[socket] connection failed (not an auth problem):', message);
+      return;
+    }
     if (authRetryInFlight) return;
 
     const now = Date.now();
@@ -80,9 +86,15 @@ export async function connectSocket(): Promise<Socket | null> {
 
   socket = io(SOCKET_URL, {
     auth: { token },
-    transports: ['websocket'],
+    // Polling is the fallback for networks that block the WebSocket upgrade
+    // (corporate proxies, some mobile networks). Websocket-only would hard-fail
+    // there and, with infinite retries, fail silently every second.
+    transports: ['websocket', 'polling'],
     reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
+    reconnectionDelay: 1_000,
+    // Give up eventually rather than retrying forever behind a dead network,
+    // and let the UI show its disconnected state.
+    reconnectionDelayMax: 30_000,
   });
   bindAll(socket);
   attachLifecycle(socket);

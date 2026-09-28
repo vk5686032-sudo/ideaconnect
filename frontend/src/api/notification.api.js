@@ -1,6 +1,6 @@
 import api from './axios';
 
-export const notificationApi = {
+const notificationApi = {
   getMy: (params) => api.get('/notifications', { params }),
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),

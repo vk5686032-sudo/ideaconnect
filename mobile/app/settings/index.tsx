@@ -19,6 +19,7 @@ import { Input } from '@/components/Input';
 import { authApi } from '@/api/auth.api';
 import { useAuthStore } from '@/store/authSlice';
 import { useChangePassword } from '@/hooks/queries/useProfile';
+import { unregisterPushToken } from '@/services/pushTokens';
 import type { ApiError } from '@/types/models';
 
 const passwordSchema = z
@@ -46,6 +47,7 @@ export default function SettingsScreen() {
   const logoutStore = useAuthStore((state) => state.logout);
   const changePassword = useChangePassword();
   const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const [disablingPush, setDisablingPush] = useState(false);
 
   const {
     control,
@@ -72,6 +74,22 @@ export default function SettingsScreen() {
         if (apiMessage) message = apiMessage;
       }
       Toast.show({ type: 'error', text1: message });
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setDisablingPush(true);
+    try {
+      await unregisterPushToken();
+      Toast.show({ type: 'success', text1: 'Push disabled on this device' });
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: 'Could not turn off push',
+        text2: 'No push token was registered for this device.',
+      });
+    } finally {
+      setDisablingPush(false);
     }
   };
 
@@ -174,6 +192,20 @@ export default function SettingsScreen() {
               Realtime in-app alerts work everywhere. Full push delivery to a
               closed app requires the installed app build (Expo Go cannot
               receive remote push).
+            </Text>
+            <Button
+              title={
+                disablingPush ? 'Turning off…' : 'Turn off push on this device'
+              }
+              variant="outline"
+              loading={disablingPush}
+              onPress={() => void handleDisablePush()}
+              className="mt-3"
+            />
+            <Text className="mt-2 font-sans text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+              Removes the push token for this device, so IdeaConnect stops
+              sending notifications here. To re-enable, grant notification
+              permission and sign in again.
             </Text>
           </Card>
 
