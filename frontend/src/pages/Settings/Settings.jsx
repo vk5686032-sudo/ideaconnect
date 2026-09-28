@@ -154,7 +154,7 @@ const Settings = () => {
           />
           <input
             type="password"
-            placeholder="New password (min 6 characters)"
+            placeholder="New password (min 8 characters)"
             className="input-field"
             value={passwords.newPassword}
             onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}

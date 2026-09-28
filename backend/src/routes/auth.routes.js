@@ -54,7 +54,7 @@ const express = require('express');
  *             type: object
  *             required: [password]
  *             properties:
- *               password: { type: string, minLength: 6 }
+ *               password: { type: string, minLength: 8 }
  *     responses:
  *       200: { description: New AuthPayload }
  *       400: { description: Invalid or expired token, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
@@ -92,7 +92,7 @@ const { shouldSkipLimiting } = require('../utils/ip');
 // guess is worth something: password guessing, account enumeration, and
 // mail-bombing an address via resend-verification.
 //
-// /refresh is deliberately excluded — the mobile client refreshes silently,
+// /refresh is deliberately excluded â€” the mobile client refreshes silently,
 // and a strict bucket there logs people out for no security gain.
 const authLimiter = rateLimit({
   windowMs: config.authRateLimit.windowMs,
@@ -119,7 +119,7 @@ const authLimiter = rateLimit({
  *             properties:
  *               name: { type: string }
  *               email: { type: string, format: email }
- *               password: { type: string, minLength: 6 }
+ *               password: { type: string, minLength: 8 }
  *     responses:
  *       201: { description: Registered; returns access + refresh tokens }
  *       400: { description: Email already registered }

@@ -10,7 +10,7 @@ import authApi from '../../api/auth.api';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(1, 'Password is required'),
   // Must be declared or zod strips it, and the default `rememberMe = true`
   // in setAuth would silently force every session into localStorage.
   rememberMe: z.boolean().optional(),
@@ -75,7 +75,7 @@ const Login = () => {
                 type={showPassword ? 'text' : 'password'}
                 {...register('password')}
                 className="input-field pl-10 pr-10"
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
               />
               <button
                 type="button"

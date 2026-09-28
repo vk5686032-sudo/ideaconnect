@@ -138,7 +138,7 @@ export default function SettingsScreen() {
                 <Input
                   value={value}
                   onChangeText={onChange}
-                  placeholder="New password (min 6)"
+                  placeholder="New password (min 8)"
                   secureTextEntry
                   containerClassName="mt-2"
                   error={errors.newPassword?.message}
@@ -172,7 +172,7 @@ export default function SettingsScreen() {
             <FieldLabel>Sessions</FieldLabel>
             <Button
               title={
-                loggingOutAll ? 'Signing out everywhereâ€¦' : 'Log out of all devices'
+                loggingOutAll ? 'Signing out everywhereÃ¢â‚¬Â¦' : 'Log out of all devices'
               }
               variant="outline"
               loading={loggingOutAll}
@@ -195,7 +195,7 @@ export default function SettingsScreen() {
             </Text>
             <Button
               title={
-                disablingPush ? 'Turning offâ€¦' : 'Turn off push on this device'
+                disablingPush ? 'Turning offÃ¢â‚¬Â¦' : 'Turn off push on this device'
               }
               variant="outline"
               loading={disablingPush}
@@ -212,10 +212,10 @@ export default function SettingsScreen() {
           <Card>
             <FieldLabel>About</FieldLabel>
             <Text className="font-sans text-sm text-gray-700 dark:text-gray-300">
-              IdeaConnect Â· v{appVersion}
+              IdeaConnect Ã‚Â· v{appVersion}
             </Text>
             <Text className="mt-1 font-sans text-[11px] text-gray-400 dark:text-gray-500">
-              Collaborative innovation platform â€” share ideas, build teams,
+              Collaborative innovation platform Ã¢â‚¬â€ share ideas, build teams,
               ship projects together.
             </Text>
           </Card>

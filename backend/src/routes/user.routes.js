@@ -100,7 +100,7 @@ const express = require('express');
  *             required: [currentPassword, newPassword]
  *             properties:
  *               currentPassword: { type: string }
- *               newPassword: { type: string, minLength: 6 }
+ *               newPassword: { type: string, minLength: 8 }
  *     responses:
  *       200: { description: Password changed }
  *       400: { description: Current password incorrect }

@@ -23,7 +23,7 @@ import type { ApiError } from '@/types/models';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -107,7 +107,7 @@ export default function LoginScreen() {
                 label="Password"
                 value={value}
                 onChangeText={onChange}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
                 secureTextEntry={!showPassword}
                 error={errors.password?.message}
                 leftIcon={
@@ -131,7 +131,7 @@ export default function LoginScreen() {
           />
 
           <Button
-            title={isSubmitting ? 'Signing inâ€¦' : 'Sign In'}
+            title={isSubmitting ? 'Signing inÃ¢â‚¬Â¦' : 'Sign In'}
             onPress={handleSubmit(onSubmit)}
             loading={isSubmitting}
           />
