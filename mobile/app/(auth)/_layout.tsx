@@ -1,13 +1,15 @@
-import { Redirect, Stack, useSegments } from 'expo-router';
+import { Redirect, Stack, usePathname } from 'expo-router';
 
 import { useAuthStatus } from '@/hooks/useAuth';
 import { shouldRedirectAuthenticated } from '@/utils/authGuard';
 
 export default function AuthLayout() {
   const status = useAuthStatus();
-  const segments = useSegments();
+  // usePathname, not useSegments: segments include the '(auth)' group, so
+  // segments[0] is the group rather than the screen being rendered.
+  const pathname = usePathname();
 
-  if (status === 'authenticated' && shouldRedirectAuthenticated(segments[0])) {
+  if (status === 'authenticated' && shouldRedirectAuthenticated(pathname)) {
     return <Redirect href="/(tabs)" />;
   }
 

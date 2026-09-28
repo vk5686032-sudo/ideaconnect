@@ -9,11 +9,21 @@
  *
  * A signed-in user must NOT be able to reach the login or register screens,
  * which have no token to act on.
+ *
+ * Takes the URL path, not the route segments: `useSegments()` includes the
+ * '(auth)' group, so its first element is the group and never the screen.
  */
 const TOKEN_BEARING_SCREENS = new Set(['reset-password', 'verify-email']);
 
-export const isTokenBearingScreen = (segment?: string | null): boolean =>
-  Boolean(segment) && TOKEN_BEARING_SCREENS.has(segment as string);
+const firstSegment = (pathname: string | null | undefined): string => {
+  // Strip any query/hash: on web usePathname() can include the search string,
+  // and 'reset-password?token=...' would not match the screen name.
+  const [path] = (pathname ?? '').split(/[?#]/);
+  return path.split('/').filter(Boolean)[0] ?? '';
+};
 
-export const shouldRedirectAuthenticated = (segment?: string | null): boolean =>
-  !isTokenBearingScreen(segment);
+export const isTokenBearingScreen = (pathname?: string | null): boolean =>
+  TOKEN_BEARING_SCREENS.has(firstSegment(pathname));
+
+export const shouldRedirectAuthenticated = (pathname?: string | null): boolean =>
+  !isTokenBearingScreen(pathname);
