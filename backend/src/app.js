@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
 const config = require('./config/env');
 const errorHandler = require('./middlewares/errorHandler');
+const { shouldSkipLimiting } = require('./utils/ip');
 const openapiSpec = require('./docs/swagger');
 
 // Import routes
@@ -71,31 +72,13 @@ app.use(
 
 // Rate limiting — generous default (600/15min) since a single page load fires
 // several API calls and notifications poll periodically. Override via
-// RATE_LIMIT_MAX env var. Only counted for real users (skip internal calls).
-const isPrivateIP = (ip) => {
-  // IPv4 private ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x, 127.x.x.x
-  // IPv6 loopback: ::1, ::ffff:127.0.0.1
-  if (!ip) return true;
-  const cleanIp = ip.replace('::ffff:', '');
-  if (['127.0.0.1', '::1'].includes(cleanIp)) return true;
-  const parts = cleanIp.split('.');
-  if (parts.length === 4) {
-    const [a, b] = parts.map(Number);
-    if (a === 10) return true;
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    if (a === 192 && b === 168) return true;
-  }
-  return false;
-};
-
+// RATE_LIMIT_MAX env var. Credential endpoints get a tighter bucket of their
+// own, in routes/auth.routes.js.
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
   message: 'Too many requests from this IP, please try again later.',
-  // Skip private IPs (localhost + LAN) — local dev shouldn't trip it.
-  // Never in production: that is exactly how a direct-to-backend deployment
-  // ended up with no rate limiting at all.
-  skip: (req) => config.nodeEnv !== 'production' && isPrivateIP(req.ip),
+  skip: shouldSkipLimiting(config.nodeEnv),
 });
 app.use('/api', limiter);
 

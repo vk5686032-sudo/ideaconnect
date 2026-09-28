@@ -123,12 +123,18 @@ const userSchema = new mongoose.Schema(
     verificationExpire: Date,
     // Active refresh tokens (hashed). Capped to the 5 most recent devices.
     refreshTokens: [
-      {
-        tokenHash: { type: String, required: true },
-        expiresAt: { type: Date, required: true },
-        createdAt: { type: Date, default: Date.now },
-      },
-    ],
+        {
+          tokenHash: { type: String, required: true },
+          expiresAt: { type: Date, required: true },
+          createdAt: { type: Date, default: Date.now },
+          // Set when a token is rotated rather than deleted. Keeping the hash
+          // around is what lets a replayed token be recognised as a replay
+          // instead of looking like random garbage, which is what triggers
+          // revoking the whole family.
+          revokedAt: { type: Date, default: null },
+        },
+      ],
+
     // Expo push tokens for mobile notifications (max 5 devices)
     pushTokens: [
       {

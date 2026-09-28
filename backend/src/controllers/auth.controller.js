@@ -12,15 +12,34 @@ const emailService = require('../services/email.service');
 const crypto = require('crypto');
 const config = require('../config/env');
 
-// Issue a refresh token: stores only its hash, keeps at most 5 devices
+// How long a rotated-out token's hash is kept so a replay can be recognised.
+// Long enough to cover a token that leaked and got used the same day, short
+// enough that the retired hashes are not a growing table.
+const REUSE_DETECTION_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// Issue a refresh token: stores only its hash, keeps at most 5 live devices
 const issueRefreshToken = async (user) => {
+  const now = Date.now();
   const refreshToken = generateRefreshToken();
-  user.refreshTokens.push({
-    tokenHash: hashToken(refreshToken),
-    expiresAt: new Date(Date.now() + config.refreshTokenExpireDays * 24 * 60 * 60 * 1000),
+
+  // Drop live tokens that have expired, and retired ones we no longer need to
+  // recognise. Retired hashes must survive the rotation window — pruning them
+  // immediately would leave a replay with nothing to match against, which is
+  // the whole problem this is solving. Only *live* tokens count toward the
+  // device cap, otherwise a client refreshing every 15 minutes would age
+  // itself out of its own account within an hour.
+  user.refreshTokens = user.refreshTokens.filter((t) => {
+    if (t.revokedAt) return now - new Date(t.revokedAt).getTime() < REUSE_DETECTION_WINDOW_MS;
+    return new Date(t.expiresAt).getTime() > now;
   });
 
-  // Cap concurrent device sessions
+  user.refreshTokens.push({
+    tokenHash: hashToken(refreshToken),
+    expiresAt: new Date(now + config.refreshTokenExpireDays * 24 * 60 * 60 * 1000),
+  });
+
+  // Cap concurrent device sessions. The array is append-ordered, so shift()
+  // drops the oldest, which is the one most likely to be retired.
   while (user.refreshTokens.length > 5) {
     user.refreshTokens.shift();
   }
@@ -126,12 +145,32 @@ exports.refresh = async (req, res, next) => {
     }
 
     const tokenHash = hashToken(refreshToken);
-    const user = await User.findOne({
-      'refreshTokens.tokenHash': tokenHash,
-      'refreshTokens.expiresAt': { $gt: new Date() },
-    });
+    // Looked up by hash alone, ignoring expiry, so that a token which was
+    // rotated out is still findable. If it is not in here at all, the caller
+    // simply made it up and there is nothing to revoke.
+    const user = await User.findOne({ 'refreshTokens.tokenHash': tokenHash });
 
     if (!user) {
+      return errorResponse(res, 401, 'Invalid or expired refresh token');
+    }
+
+    const presented = user.refreshTokens.find((t) => t.tokenHash === tokenHash);
+
+    // Reuse of a token that was already spent. Either the token leaked or the
+    // client is replaying, and we cannot tell which — so every session for the
+    // account dies and both parties re-authenticate. Keeping the retired hash
+    // is what makes this detectable.
+    if (presented.revokedAt) {
+      user.refreshTokens = [];
+      await user.save();
+      return errorResponse(
+        res,
+        401,
+        'This session was already used. All sessions have been signed out — please sign in again.'
+      );
+    }
+
+    if (new Date(presented.expiresAt) <= new Date()) {
       return errorResponse(res, 401, 'Invalid or expired refresh token');
     }
 
@@ -142,10 +181,8 @@ exports.refresh = async (req, res, next) => {
       return errorResponse(res, 403, 'Your account has been suspended. Contact support.');
     }
 
-    // Rotation: revoke the used token, issue a fresh pair
-    user.refreshTokens = user.refreshTokens.filter(
-      (t) => t.tokenHash !== tokenHash
-    );
+    // Rotation: retire the used token rather than delete it, issue a fresh pair
+    presented.revokedAt = new Date();
     const accessToken = generateToken(user._id);
     const newRefreshToken = await issueRefreshToken(user);
 
@@ -221,13 +258,21 @@ exports.verifyEmail = async (req, res, next) => {
 };
 
 // Forgot password
+//
+// Always the same answer, whether or not the address is registered. This used
+// to 404 with "User not found", which made the reset form an enumeration
+// oracle — one request per guess tells you which addresses have accounts.
+// The /auth/forgot-password OpenAPI entry already documented the intent.
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
 
+    // Same wording in every branch, including the success one below.
+    const generic = 'If an account exists for that email, a reset link has been sent.';
+
     const user = await User.findOne({ email });
     if (!user) {
-      return errorResponse(res, 404, 'User not found');
+      return successResponse(res, 200, generic);
     }
 
     // Generate reset token
@@ -240,11 +285,12 @@ exports.forgotPassword = async (req, res, next) => {
     try {
       await emailService.sendResetEmail(email, resetToken, user.name);
     } catch (emailError) {
+      // Logged, not surfaced. Returning 500 here would hand the caller an
+      // oracle for "this address exists but our mail is broken".
       console.error('Email error:', emailError);
-      return errorResponse(res, 500, 'Error sending reset email');
     }
 
-    successResponse(res, 200, 'Password reset email sent');
+    successResponse(res, 200, generic);
   } catch (error) {
     next(error);
   }
@@ -282,17 +328,19 @@ exports.resetPassword = async (req, res, next) => {
 };
 
 // Resend verification
+//
+// Same non-enumeration rule as forgotPassword: a 404 here, or the 400
+// "Email already verified", tells an attacker which addresses are registered
+// and which are already confirmed.
 exports.resendVerification = async (req, res, next) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return errorResponse(res, 404, 'User not found');
-    }
+    const generic = 'If an account exists for that email, a verification link has been sent.';
 
-    if (user.isVerified) {
-      return errorResponse(res, 400, 'Email already verified');
+    const user = await User.findOne({ email });
+    if (!user || user.isVerified) {
+      return successResponse(res, 200, generic);
     }
 
     const verificationToken = generateVerificationToken();
@@ -306,7 +354,7 @@ exports.resendVerification = async (req, res, next) => {
       console.error('Email error:', emailError);
     }
 
-    successResponse(res, 200, 'Verification email sent');
+    successResponse(res, 200, generic);
   } catch (error) {
     next(error);
   }

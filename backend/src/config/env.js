@@ -18,6 +18,14 @@ module.exports = {
     max: Number(process.env.RATE_LIMIT_MAX) || 600,
     windowMs: 15 * 60 * 1000,
   },
+  // Credential endpoints get their own, much tighter bucket. The global 600
+  // is sized for page loads, which is no defence at all against password
+  // guessing or email enumeration. Tuned so a real user cannot hit it by
+  // mistyping, but a script cannot walk a wordlist through it.
+  authRateLimit: {
+    max: Number(process.env.AUTH_RATE_LIMIT_MAX) || 10,
+    windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  },
   smtp: {
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,

@@ -65,17 +65,21 @@ exports.optionalAuth = async (req, res, next) => {
   next();
 };
 
-// EMAIL VERIFICATION — TEMPORARILY BYPASSED FOR DEVELOPMENT.
-// The routes still reference this middleware everywhere (ideas, projects,
-// tasks writes), so re-enabling later only requires restoring the check:
+// EMAIL VERIFICATION.
 //
-// exports.checkVerification = (req, res, next) => {
-//   if (!req.user.isVerified) {
-//     return errorResponse(res, 403, 'Please verify your email to access this feature');
-//   }
-//   next();
-// };
+// This was a blanket no-op with the real check commented out, so unverified
+// accounts could write in production as well as in dev. The 16 write routes
+// that reference it (ideas, projects, tasks, ...) are the ones this covers.
+//
+// Bypassed outside production so local work is not blocked. Before deploying
+// with NODE_ENV=production, run the one-time migration, otherwise every
+// existing account is locked out (isVerified defaults to false):
+//
+//   node scripts/backfill-verified.js --apply
 exports.checkVerification = (req, res, next) => {
+  if (config.nodeEnv === 'production' && !req.user.isVerified) {
+    return errorResponse(res, 403, 'Please verify your email to access this feature');
+  }
   next();
 };
 

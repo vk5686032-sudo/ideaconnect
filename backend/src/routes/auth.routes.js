@@ -6,6 +6,7 @@ const express = require('express');
  *   post:
  *     tags: [Auth]
  *     summary: Resend the verification email
+ *     description: "Always returns the same confirmation so accounts cannot be enumerated."
  *     security: []
  *     requestBody:
  *       required: true
@@ -80,9 +81,25 @@ const express = require('express');
  *       200: { description: Generic confirmation }
  */
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
+const config = require('../config/env');
 const authController = require('../controllers/auth.controller');
 const { protect } = require('../middlewares/auth');
 const { registerSchema, loginSchema, validate } = require('../validations/auth.validation');
+const { shouldSkipLimiting } = require('../utils/ip');
+
+// Tighter than the global /api limiter, and applied to the endpoints where a
+// guess is worth something: password guessing, account enumeration, and
+// mail-bombing an address via resend-verification.
+//
+// /refresh is deliberately excluded — the mobile client refreshes silently,
+// and a strict bucket there logs people out for no security gain.
+const authLimiter = rateLimit({
+  windowMs: config.authRateLimit.windowMs,
+  max: config.authRateLimit.max,
+  message: 'Too many attempts. Please try again later.',
+  skip: shouldSkipLimiting(config.nodeEnv),
+});
 
 // Public routes
 /**
@@ -107,7 +124,7 @@ const { registerSchema, loginSchema, validate } = require('../validations/auth.v
  *       201: { description: Registered; returns access + refresh tokens }
  *       400: { description: Email already registered }
  */
-router.post('/register', validate(registerSchema), authController.register);
+router.post('/register', authLimiter, validate(registerSchema), authController.register);
 
 /**
  * @openapi
@@ -130,7 +147,7 @@ router.post('/register', validate(registerSchema), authController.register);
  *       200: { description: Returns AuthPayload (token + refreshToken) }
  *       401: { description: Invalid credentials }
  */
-router.post('/login', validate(loginSchema), authController.login);
+router.post('/login', authLimiter, validate(loginSchema), authController.login);
 
 /**
  * @openapi
@@ -154,9 +171,9 @@ router.post('/login', validate(loginSchema), authController.login);
  */
 router.post('/refresh', authController.refresh);
 router.get('/verify-email/:token', authController.verifyEmail);
-router.post('/forgot-password', authController.forgotPassword);
-router.put('/reset-password/:token', authController.resetPassword);
-router.post('/resend-verification', authController.resendVerification);
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+router.put('/reset-password/:token', authLimiter, authController.resetPassword);
+router.post('/resend-verification', authLimiter, authController.resendVerification);
 
 // Protected routes
 /**
