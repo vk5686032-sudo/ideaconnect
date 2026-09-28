@@ -40,6 +40,7 @@ services:
       JWT_EXPIRE: ${JWT_EXPIRE:-15m}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      MOBILE_SCHEME: ${MOBILE_SCHEME:-ideaconnect}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-600}
       # Optional integrations. Left blank, email sends are skipped, uploads
       # fall back to local disk and AI analysis returns mock scores.

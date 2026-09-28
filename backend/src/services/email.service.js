@@ -44,8 +44,38 @@ const deliver = async (email, subject, html, devUrl) => {
   });
 };
 
+/**
+ * A mail client cannot open a custom-scheme link, and the web router cannot
+ * read a query param, so these emails carry BOTH: the web link is the primary
+ * button, the app deep link is a secondary link for someone who has the app
+ * installed. The token is a path segment for the web (which routes
+ * /reset-password/:token) and a query param for the app (which reads it via
+ * useLocalSearchParams).
+ */
+const buildVerificationUrls = (frontendUrl, scheme, token) => {
+  const web = `${frontendUrl}/verify-email/${token}`;
+  return { web, app: scheme ? `${scheme}://verify-email?token=${token}` : web };
+};
+
+const buildResetUrls = (frontendUrl, scheme, token) => {
+  const web = `${frontendUrl}/reset-password/${token}`;
+  return { web, app: scheme ? `${scheme}://reset-password?token=${token}` : web };
+};
+
+const appLinkBlock = (label, appUrl, webUrl) => `
+        <p style="margin: 24px 0 8px;">
+          <a href="${appUrl}" style="color: #6366f1;">${label}</a>
+        </p>
+        <p style="font-size: 12px; color: #6b7280; margin: 0;">
+          Not using the app? <a href="${webUrl}" style="color: #6b7280;">Use the web version</a>.
+        </p>`;
+
 const sendVerificationEmail = (email, token, name) => {
-  const verificationUrl = `${config.frontendUrl}/verify-email/${token}`;
+  const { web: verificationUrl, app: appUrl } = buildVerificationUrls(
+    config.frontendUrl,
+    config.mobileScheme,
+    token
+  );
 
   return deliver(
     email,
@@ -57,6 +87,7 @@ const sendVerificationEmail = (email, token, name) => {
         <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #6366f1; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">Verify Email</a>
         <p>Or copy this link: ${verificationUrl}</p>
         <p>This link expires in 24 hours.</p>
+        ${appLinkBlock('Open in the IdeaConnect app', appUrl, verificationUrl)}
       </div>
     `,
     verificationUrl
@@ -64,7 +95,11 @@ const sendVerificationEmail = (email, token, name) => {
 };
 
 const sendResetEmail = (email, token, name) => {
-  const resetUrl = `${config.frontendUrl}/reset-password/${token}`;
+  const { web: resetUrl, app: appUrl } = buildResetUrls(
+    config.frontendUrl,
+    config.mobileScheme,
+    token
+  );
 
   return deliver(
     email,
@@ -78,6 +113,7 @@ const sendResetEmail = (email, token, name) => {
         <p>Or copy this link: ${resetUrl}</p>
         <p>This link expires in 10 minutes.</p>
         <p>If you didn't request this, please ignore this email.</p>
+        ${appLinkBlock('Open in the IdeaConnect app', appUrl, resetUrl)}
       </div>
     `,
     resetUrl
@@ -100,4 +136,6 @@ module.exports = {
   sendVerificationEmail,
   sendResetEmail,
   sendNotificationEmail,
+  buildVerificationUrls,
+  buildResetUrls,
 };
