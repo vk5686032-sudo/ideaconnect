@@ -30,9 +30,13 @@ Version policy: install native modules with `npx expo install <pkg>` so versions
 | Package | Why |
 |---|---|
 | `expo-secure-store` | **Only** place for `accessToken` + `refreshToken` (Keychain/Keystore-backed) |
-| `@react-native-async-storage/async-storage` | Non-sensitive prefs (theme override, last filters). Query cache stays in-memory |
 
-> Rule: SecureStore = credentials. AsyncStorage = preferences. Never swap.
+> Rule: SecureStore = credentials. Never swap.
+>
+> **No general-purpose key-value store is installed.** Theme and filter state are not persisted:
+> the Query cache is in-memory, the auth store hydrates from SecureStore on launch, and the
+> theme follows the OS setting. If a non-sensitive preference ever needs persisting, add
+> `@react-native-async-storage/async-storage` *then* — do not carry an unused dependency.
 
 ## Realtime & notifications
 

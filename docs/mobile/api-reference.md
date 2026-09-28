@@ -38,6 +38,9 @@ Client rules:
 - Store both tokens in SecureStore; never log them.
 - On 401 from a non-auth endpoint → single-flight refresh once → retry original. If refresh fails → clear storage → route to login.
 - Auth endpoints (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/resend-verification`) must NOT trigger global logout on 401.
+- **Reset / verify screens must stay reachable while signed in.** A user who taps a reset link
+  from their inbox with a live session must not be redirected to the tabs, or the token is lost.
+  The `(auth)` group guard allows those two screens through.
 
 ---
 
@@ -54,6 +57,15 @@ Client rules:
 | GET | `/auth/verify-email/:token` | public |
 | POST | `/auth/forgot-password` | `{ email }` → always check your email flow |
 | PUT | `/auth/reset-password/:token` | `{ password }` → **returns fresh AuthPayload** and revokes old sessions |
+
+The token in the **API path** is a path segment, but the **app deep link** carries it as a
+query param, because the mobile screens read it with `useLocalSearchParams`. Emails therefore
+contain two links:
+
+- web: `https://<FRONTEND_URL>/reset-password/<token>` (path segment)
+- app: `ideaconnect://reset-password?token=<token>` (query param, scheme from `MOBILE_SCHEME`)
+
+Same for verification: `.../verify-email/<token>` vs `ideaconnect://verify-email?token=<token>`.
 
 ## Users
 
@@ -129,12 +141,19 @@ REST: `POST /chats/direct { recipientId }` · `POST /chats/group { name, descrip
 ### Socket.io events
 
 Connect once while authed: `io(SOCKET_URL, { auth: { token }, transports:['websocket','polling'] })`.
+Keep the `polling` fallback — websocket-only hard-fails behind proxies that block the upgrade.
+
+**Identity and authorization:** the server derives the sender from the verified socket
+(`socket.userId`), never from a payload field, and **ignores any `senderId` you send** on
+`message:send`. A socket that is not a participant in `chatId` is refused `chat:join` and
+`message:send`. Read receipts and typing indicators are also attributed to the socket's own
+user, so do not send a `userId` with them.
 
 | Client emits | Payload | Server emits back |
 |---|---|---|
 | `join` | `userId` | `user:online(userId)` / `user:offline(userId)` (global) |
 | `chat:join` / `chat:leave` | `chatId` | — |
-| `message:send` | `{ chatId, content, senderId, replyTo? }` | `message:received(message)` to room; `notification {type:'new_message'}` to other members |
+| `message:send` | `{ chatId, content, replyTo? }` | `message:received(message)` to room; `chat:unread {chatId, message}` to other members |
 | `typing:start` / `typing:stop` | `{ chatId, userId, userName? }` | `typing:user` / `typing:stopped` (others in room) |
 | `messages:read` | `{ chatId, userId }` | broadcast `messages:read { chatId, userId }` |
 
@@ -146,7 +165,33 @@ Read model: each message has `readBy: [{ user, readAt }]` — ✓ when only send
 
 `GET /notifications?page&limit` · `GET /notifications/unread-count` → `{ count }` · `PUT /notifications/:id/read` · `PUT /notifications/read-all`
 
-Types seen in `type`: `like, comment, reply, mention, invitation, join-request, project-update, task-assigned, mentor-review, mentor-request(+accepted/rejected), ai-analysis, system, start-project-*`. Each carries `title`, `message`, `actionUrl` (deep-link target), `relatedIdea/Project/Comment/User`.
+The list endpoint does **not** use the paginated envelope. It returns
+`{ notifications, total, unreadCount }` inside `data`, with no `pagination` object, so compute
+has-more from the fetched count vs `total`.
+
+### Two distinct realtime channels
+
+| Event | Payload | Creates a `Notification` row? |
+|---|---|---|
+| `notification` | `{ type, notification }` | **Yes** — one per real notification |
+| `chat:unread` | `{ chatId, message }` | **No** — transient unread badge only |
+
+Do not listen for chat messages on `notification`. They used to share that event under a second,
+incompatible payload shape, which meant every client had to sniff the payload and every chat
+message triggered a pointless notification refetch. They are separate now.
+
+A plain chat message never creates a notification row. A chat **mention** does, via the
+`notification` channel with `type: 'mention'`.
+
+Types seen in `type`: `like, comment, reply, mention, invitation, join-request, project-update, task-assigned, mentor-review, mentor-request(+accepted/rejected), ai-analysis, system, start-project-*`, `content-report`. Each carries `title`, `message`, `actionUrl` (deep-link target), `relatedIdea/Project/Comment/User`.
+
+### actionUrl shapes
+
+The backend targets the *web* router, so it emits paths the mobile app must map itself
+(`src/utils/links.ts`): `/ideas/:id`, `/projects/:id`, `/chat/:id`, `/users/:id` (all 24-hex ids),
+plus the bare `/dashboard` and `/teams`. `/dashboard` maps to the Home tab; `/teams` has no mobile
+equivalent and falls back to the notifications list. Anything unrecognised also falls back to
+`/notifications` — a tap must never be a silent no-op.
 
 Push: server auto-dispatches Expo push on every notification creation to registered device tokens. Mobile registers via `PUT /users/me/push-tokens` after login.
 

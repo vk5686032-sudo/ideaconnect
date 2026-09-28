@@ -49,7 +49,7 @@ Legend: ✅ Must-have (v1) · 🟡 Should-have (v1 if time allows) · ⏳ Deferr
 | Dashboard/home summary (stats, my tasks) | 🟡 | `GET /users/me/stats`, `GET /tasks/my` |
 | Create project from idea | ⏳ | `POST /projects?idea=` |
 | Invite-only team management UI | ⏳ | `/ideas/:id/invites*` |
-| AI analysis screens | ⏳ | `/ai/*` |
+| AI analysis screens | ✅ | `/ai/*` — **shipped early**; collapsible Insights card on Idea Detail. Backend returns mock scores without an `OPENAI_API_KEY` |
 | Content reporting UI | ⏳ | `POST /reports` |
 | Admin panel | ⏳ | Out of scope for mobile |
 

@@ -212,14 +212,19 @@ silently via `POST /auth/refresh` using the rotating refresh token from login (~
 
 ### Socket.io events (`sockets/chat.socket.js`)
 
+Sockets authenticate with the JWT in `handshake.auth.token`; the server derives the user from
+`socket.userId` and ignores any client-supplied `senderId`. Chat access is checked against the
+`participants` list before joining a room or writing a message.
+
 | Client → server | Server → client |
 |---|---|
-| `join` / `chat:join` / `chat:leave` | `user:online` / `user:offline` / `presence:snapshot` |
+| `join` / `chat:join` / `chat:leave` | `user:online` / `user:offline` / `presence:snapshot` (scoped to chat peers) |
 | `message:send` | `message:received` |
 | `typing:start` / `typing:stop` | `typing:user` / `typing:stopped` |
 | `messages:read` | `messages:read` |
 | — | `message:edited` / `message:deleted` / `message:deletedFor` / `message:reacted` |
-| — | `notification` (realtime push) |
+| — | `notification` — a real Notification row was created |
+| — | `chat:unread` — transient chat badge, no row created |
 
 Sockets authenticate via the JWT in `handshake.auth.token`; the server trusts `socket.userId`
 only, never a client-supplied `senderId`.
@@ -281,7 +286,7 @@ npm run dev                  # nodemon
 npm run seed                 # load demo data (clears DB first)
 npm run seed:dry             # preview seed
 npm run backfill:reputation  # recompute reputation from existing activity
-npm test                     # node:test + supertest (9 tests)
+npm test                     # node:test + supertest (33 tests)
 node scripts/verify-openapi.js   # asserts the OpenAPI spec covers every route
 
 # Frontend
@@ -289,17 +294,20 @@ npm run dev
 npm run build
 npm run preview
 npm run lint                 # oxlint
-npm test                     # vitest
+npm test                     # vitest (24 tests)
 
 # Mobile
 npm start                    # Expo
 npm run typecheck            # tsc --noEmit
 npm run lint
+npm test                     # jest / jest-expo (29 tests)
 ```
 
-Backend tests use a dedicated `ideaconnect_test` database and boot the app on an ephemeral
-port, so they never touch your dev data or clash with a running server. They require a local
-MongoDB on `localhost:27017`.
+Backend tests use dedicated databases (`ideaconnect_test`, `…_chataccess`, `…_socketauth`,
+`…_email` — one per file, because the runner executes files concurrently and each wipes its own
+collections) and boot the app on an ephemeral port, so they never touch your dev data or clash
+with a running server. They require a local MongoDB on `localhost:27017`; override with
+`MONGODB_URI_TEST` / `MONGODB_URI_CHATACCESS` / `MONGODB_URI_SOCKETAUTH` / `MONGODB_URI_EMAIL`.
 
 **CI** (`.github/workflows/ci.yml`) runs on every push/PR to `main`: backend tests + OpenAPI
 verification, frontend lint/test/build, mobile typecheck/lint, and a Docker build with a live
@@ -322,7 +330,9 @@ smoke test of the composed stack.
 - [x] React Native (Expo) mobile app — Phases 0–6
 - [x] Docker + docker-compose + GitHub Actions CI
 - [x] EAS build profiles (`mobile/eas.json`)
-- [~] Test coverage — unit/smoke tests only; no integration or E2E suite
+- [x] Socket authorization (chat membership) + socket regression tests
+- [x] Mobile test suite (jest-expo) and web auth-store regression tests
+- [~] Test coverage — 33 backend / 24 frontend / 29 mobile; no E2E or integration suite
 - [ ] Mobile Phase 7 polish (skeletons, error states, first EAS release build)
 - [ ] Closed-app push verification (needs an EAS build + `EXPO_PUBLIC_EAS_PROJECT_ID`)
 - [ ] Google OAuth login

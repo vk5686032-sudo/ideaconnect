@@ -40,6 +40,8 @@ npm run android   # Android
 npm run ios       # iOS
 npm run typecheck # tsc --noEmit (must be zero errors)
 npm run lint      # expo lint
+npm test          # jest (jest-expo preset)
+npm run test:coverage
 ```
 
 ### Docker (from repo root)
@@ -109,6 +111,8 @@ EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push t
 - `src/api/client.ts` is the axios instance; `src/api/tokenStorage.ts` is the only place tokens
   live (expo-secure-store)
 - `src/services/socket.ts` is a singleton Socket.io client
+- Tests live beside the code in `__tests__/`, resolved through the `@/` alias
+  (`jest.config.js`). Use `.tsx` for any file containing JSX.
 
 ## Key Patterns
 
@@ -121,10 +125,23 @@ EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push t
 - **Real-time**: Socket.io for chat, typing, presence, read receipts and notification push
 - **Mongoose 9**: no `useNewUrlParser`/`useUnifiedTopology`; async pre-save hooks take **no**
   `next` argument (see `models/User.js`)
+- **Socket identity and authorization live in `services/chatAccess.service.js`.** `isChatParticipant`
+  gates `chat:join` and `message:send`; `getChatPeers` scopes presence broadcasts. Sockets derive the
+  user from `socket.userId` (verified handshake) and **ignore any client-supplied `senderId` or
+  `userId`**. Do not re-introduce a membership check inline — the HTTP and socket paths must both go
+  through the helper, or the socket path silently bypasses REST's authorization.
+- **Two realtime channels, not one.** `notification` carries real Notification rows
+  (`{ type, notification }`); `chat:unread` carries a transient chat badge (`{ chatId, message }`)
+  and creates no row. Do not merge them — that overload is what once forced clients to sniff payloads
+  and made every chat message refetch notifications.
 - **Project members are de-duplicated** by `pre('save')` and `pre('findOneAndUpdate')` hooks in
   `models/Project.js` — no code path may persist a duplicate member
 - **Reputation** is awarded server-side by `services/reputation.service.js` and reversed on undo;
   it never throws
+- **`notificationService.create` must not throw.** All 21 call sites are bare `await`s inside
+  controller try-blocks whose catch turns a throw into a 5xx, so a failed notification would fail
+  the comment, like or project update that triggered it. It returns `null` and logs instead.
+  (`markAsRead` is the opposite: the controller depends on it resolving `null` to return 404.)
 
 ## Things to be careful about
 
@@ -139,11 +156,17 @@ EXPO_PUBLIC_EAS_PROJECT_ID=                             # needed for real push t
 - **expo-notifications throws at import time in Expo Go** (SDK 53+ Android) — never import it
   statically in mobile code; use a dynamic import guarded by `Constants.appOwnership`.
 - **Infinite-query caches** must be written through the wrapper (`{ pages, pageParams }`); bare
-  envelopes crash `InfiniteQueryObserver`.
-- **Dedupe by `_id`** when flattening paginated feeds — create/delete shifts positions and
-  duplicates cached pages.
+  envelopes crash `InfiniteQueryObserver`. Type the writer's cache as
+  `InfiniteData<Page, number>` and assert the shape in a test — a wrong alias type-checks fine
+  against itself, which is how a crash shipped once.
+- **Dedupe by `_id`** when flattening paginated feeds — create/delete shifts rows between fetches,
+  so the same row can land on two cached pages.
+- **`actionUrl` targets the web router.** `mobile/src/utils/links.ts` must map every shape the
+  backend emits; an unmapped value falls back to `/notifications` rather than doing nothing.
 - **Never put a raw store import in `mobile/src/api/*`** — it creates a require cycle. Use
   `setAuthClientListener()`; `authSlice` registers itself.
+- **Socket transport must keep `polling` in the fallback list.** Websocket-only hard-fails behind
+  proxies that block the upgrade, and with infinite retries that fails silently forever.
 
 ## Demo Accounts
 
