@@ -23,6 +23,12 @@ const reportRoutes = require('./routes/report.routes');
 
 const app = express();
 
+// Behind the compose nginx (or any reverse proxy) every request otherwise
+// arrives with the *proxy's* address as req.ip, so the private-IP skip below
+// swallowed every request and rate limiting was effectively off in the
+// documented deployment. `1` means "trust exactly one hop".
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 
@@ -86,8 +92,10 @@ const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
   message: 'Too many requests from this IP, please try again later.',
-  // Skip private IPs (localhost + LAN) — local dev shouldn't trip it
-  skip: (req) => isPrivateIP(req.ip),
+  // Skip private IPs (localhost + LAN) — local dev shouldn't trip it.
+  // Never in production: that is exactly how a direct-to-backend deployment
+  // ended up with no rate limiting at all.
+  skip: (req) => config.nodeEnv !== 'production' && isPrivateIP(req.ip),
 });
 app.use('/api', limiter);
 
@@ -101,7 +109,18 @@ if (config.nodeEnv === 'development') {
 }
 
 // Static files
-app.use('/uploads', express.static('src/uploads'));
+// nosniff + attachment: even if something active ever lands here, the browser
+// downloads it instead of rendering it in our origin. The allow-list in
+// middlewares/upload.js is the real gate; this is the backstop.
+app.use(
+  '/uploads',
+  express.static('src/uploads', {
+    setHeaders: (res) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Disposition', 'attachment');
+    },
+  })
+);
 
 // API Routes — single versioned router
 const apiRouter = express.Router();

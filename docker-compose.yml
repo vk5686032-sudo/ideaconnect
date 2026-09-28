@@ -35,8 +35,10 @@ services:
       NODE_ENV: production
       PORT: "5000"
       MONGODB_URI: mongodb://mongo:27017/ideaconnect
-      # Override in a real deployment. Compose reads backend/.env if present.
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-use-32-chars}
+      # Required. `${VAR:?msg}` makes compose refuse to start rather than sign
+      # tokens with a public literal that is now in this repo's history.
+      # Generate one with: openssl rand -hex 32
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - see backend/.env.example}
       JWT_EXPIRE: ${JWT_EXPIRE:-15m}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
@@ -53,7 +55,10 @@ services:
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     volumes:
-      - uploads:/app/uploads
+      # Must match middlewares/upload.js, which resolves to
+      # <backend>/src/uploads. This was /app/uploads, so attachments were
+      # written into the container's writable layer and lost on every restart.
+      - uploads:/app/src/uploads
     ports:
       # Exposed so the mobile app and Swagger UI can reach it directly.
       - "5000:5000"

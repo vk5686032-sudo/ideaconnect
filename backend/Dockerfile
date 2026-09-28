@@ -20,8 +20,10 @@ COPY src ./src
 COPY scripts ./scripts
 
 # Uploads are written here by the Multer middleware before being pushed to
-# Cloudinary. Mount a volume to keep them across restarts.
-RUN mkdir -p /app/uploads && chown -R node:node /app
+# Cloudinary. The path must match middlewares/upload.js, which resolves
+# <__dirname>/../uploads => /app/src/uploads. Mount a volume to keep them
+# across restarts.
+RUN mkdir -p /app/src/uploads && chown -R node:node /app
 USER node
 
 EXPOSE 5000
