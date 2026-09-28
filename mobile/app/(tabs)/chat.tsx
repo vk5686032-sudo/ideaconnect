@@ -51,9 +51,12 @@ export default function ChatScreen() {
   const [unread, setUnread] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    const off = onSocketEvent('notification', (payload) => {
-      const data = payload as { type?: string; chatId?: string };
-      if (data?.type !== 'new_message' || !data.chatId) return;
+    // Chat unread badges arrive on their own channel. They used to share the
+    // 'notification' event with real Notification rows under a second payload
+    // shape, so this handler had to sniff for type === 'new_message'.
+    const off = onSocketEvent('chat:unread', (payload) => {
+      const data = payload as { chatId?: string };
+      if (!data?.chatId) return;
       setUnread((prev) => ({
         ...prev,
         [data.chatId as string]: (prev[data.chatId as string] ?? 0) + 1,

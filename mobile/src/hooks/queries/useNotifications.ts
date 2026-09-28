@@ -3,6 +3,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
 } from '@tanstack/react-query';
 
 import { notificationApi } from '@/api/notification.api';
@@ -17,20 +18,50 @@ export const notificationKeys = {
 
 const PAGE_SIZE = 20;
 
-type ListCache = ApiSuccess<NotificationsPageResult>;
+type ListPage = ApiSuccess<NotificationsPageResult>;
 
-function mapListCache(
+// The list is an INFINITE query, so its cache value is
+// { pages: ListPage[], pageParams: number[] }. Every writer must preserve that
+// wrapper: the observer destructures `pages` on every render, so a bare
+// envelope makes it throw while computing next-page params.
+type ListCache = InfiniteData<ListPage, number>;
+
+const emptyPage = (): ListPage => ({
+  success: true,
+  message: '',
+  data: { notifications: [], total: 0, unreadCount: 0 },
+});
+
+const seedCache = (notifications: AppNotification[]): ListCache => ({
+  pages: [
+    {
+      ...emptyPage(),
+      data: {
+        notifications,
+        total: notifications.length,
+        unreadCount: notifications.filter((n) => !n.read).length,
+      },
+    },
+  ],
+  pageParams: [1],
+});
+
+// Applies `transform` to the notifications on the first page, leaving the rest
+// of the pagination state untouched.
+function mapFirstPage(
   qc: ReturnType<typeof useQueryClient>,
   transform: (notifications: AppNotification[]) => AppNotification[]
 ): void {
   qc.setQueryData<ListCache>(notificationKeys.lists(), (old) => {
-    if (!old?.data?.notifications) return old;
+    if (!old?.pages?.length) return seedCache(transform([]));
+    const [first, ...rest] = old.pages;
     return {
       ...old,
-      data: {
-        ...old.data,
-        notifications: transform(old.data.notifications),
-      },
+      pages: [
+        { ...first, data: { ...first.data, notifications: transform(first.data.notifications) } },
+        ...rest,
+      ],
+      pageParams: old.pageParams,
     };
   });
 }
@@ -51,17 +82,29 @@ export function prependNotification(
   notification: AppNotification
 ): void {
   qc.setQueryData<ListCache>(notificationKeys.lists(), (old) => {
-    if (!old?.data?.notifications) return old;
-    if (old.data.notifications.some((item) => item._id === notification._id)) {
+    if (!old?.pages?.length) return seedCache([notification]);
+
+    const [first, ...rest] = old.pages;
+    if (first.data.notifications.some((item) => item._id === notification._id)) {
       return old;
     }
     return {
       ...old,
-      data: {
-        ...old.data,
-        total: old.data.total + 1,
-        notifications: [notification, ...old.data.notifications],
-      },
+      pages: [
+        {
+          ...first,
+          data: {
+            ...first.data,
+            total: first.data.total + 1,
+            unreadCount: notification.read
+              ? first.data.unreadCount
+              : first.data.unreadCount + 1,
+            notifications: [notification, ...first.data.notifications],
+          },
+        },
+        ...rest,
+      ],
+      pageParams: old.pageParams,
     };
   });
   if (!notification.read) {
@@ -108,7 +151,7 @@ export function useMarkNotificationRead() {
     mutationFn: (id: string) => notificationApi.markAsRead(id),
     onMutate: (id) => {
       let wasUnread = false;
-      mapListCache(qc, (items) =>
+      mapFirstPage(qc, (items) =>
         items.map((item) => {
           if (item._id !== id || item.read) return item;
           wasUnread = true;
@@ -125,7 +168,7 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: () => notificationApi.markAllAsRead(),
     onMutate: () => {
-      mapListCache(qc, (items) =>
+      mapFirstPage(qc, (items) =>
         items.map((item) =>
           item.read ? item : { ...item, read: true, readAt: new Date().toISOString() }
         )

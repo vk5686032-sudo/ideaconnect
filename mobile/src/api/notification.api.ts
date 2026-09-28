@@ -4,6 +4,9 @@ import type { ApiSuccess, AppNotification } from '@/types/models';
 export interface NotificationsPageResult {
   notifications: AppNotification[];
   total: number;
+  // The backend returns this alongside the page so the list can seed the
+  // unread badge without a second round-trip.
+  unreadCount: number;
 }
 
 export const notificationApi = {

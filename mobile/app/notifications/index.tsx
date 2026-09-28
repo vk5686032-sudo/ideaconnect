@@ -29,7 +29,8 @@ import {
   useNotifications,
   useUnreadCount,
 } from '@/hooks/queries/useNotifications';
-import { resolveActionRoute } from '@/utils/links';
+import { resolveActionRoute, fallbackRoute } from '@/utils/links';
+import { flattenNotificationPages } from '@/utils/notificationPages';
 import { timeAgo, titleCase } from '@/utils/format';
 import type { AppNotification, IdeaAuthor, NotificationType } from '@/types/models';
 
@@ -115,7 +116,7 @@ export default function NotificationsScreen() {
   const markAllRead = useMarkAllNotificationsRead();
 
   const items = useMemo(
-    () => query.data?.pages.flatMap((page) => page.data.notifications) ?? [],
+    () => flattenNotificationPages(query.data?.pages),
     [query.data]
   );
 
@@ -124,10 +125,9 @@ export default function NotificationsScreen() {
       if (!item.read) {
         markRead.mutate(item._id);
       }
-      const route = resolveActionRoute(item.actionUrl);
-      if (route) {
-        router.push(route);
-      }
+      // Always navigate: previously an unmapped actionUrl left the row marked
+      // read with no navigation at all, so the tap looked broken.
+      router.push(resolveActionRoute(item.actionUrl) ?? fallbackRoute());
     },
     [markRead, router]
   );

@@ -58,30 +58,29 @@ function SocketNotificationBridge() {
 
   useEffect(() => {
     const off = onSocketEvent('notification', (payload) => {
-      const data = payload as {
-        type?: string;
-        chatId?: string;
-        notification?: AppNotification;
-      };
+      const data = payload as { notification?: AppNotification };
+      // Every event on this channel is a real Notification row, so the unread
+      // count only needs invalidating once one has actually arrived. Chat
+      // messages travel on their own 'chat:unread' channel and must not trigger
+      // a notification refetch.
+      if (!data?.notification) return;
       void queryClient.invalidateQueries({
         queryKey: notificationKeys.unread(),
       });
-      if (data?.notification) {
-        prependNotification(queryClient, data.notification);
-        const notification = data.notification;
-        const route = resolveActionRoute(notification.actionUrl);
-        showToast({
-          type: 'info',
-          text1: notification.title,
-          text2: notification.message,
-          onAction: () => {
-            if (!notification.read) {
-              markRead.mutate(notification._id);
-            }
-            router.push(route ?? { pathname: '/notifications' });
-          },
-        });
-      }
+      prependNotification(queryClient, data.notification);
+      const notification = data.notification;
+      const route = resolveActionRoute(notification.actionUrl);
+      showToast({
+        type: 'info',
+        text1: notification.title,
+        text2: notification.message,
+        onAction: () => {
+          if (!notification.read) {
+            markRead.mutate(notification._id);
+          }
+          router.push(route ?? { pathname: '/notifications' });
+        },
+      });
     });
     return off;
   }, [queryClient, router, markRead]);
