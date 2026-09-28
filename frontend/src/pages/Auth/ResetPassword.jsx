@@ -10,7 +10,7 @@ import useAuthStore from '../../store/authSlice';
 
 const resetSchema = z
   .object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -38,7 +38,7 @@ const ResetPassword = () => {
     try {
       setIsLoading(true);
       const response = await authApi.resetPassword(token, data.password);
-      // Reset returns a fresh token pair — log the user straight in
+      // Reset returns a fresh token pair â€” log the user straight in
       const { user, token: jwt, refreshToken } = response.data.data || {};
       if (user && jwt) {
         setAuth(user, jwt, refreshToken);
@@ -96,7 +96,7 @@ const ResetPassword = () => {
                 type={showPassword ? 'text' : 'password'}
                 {...register('password')}
                 className="input-field pl-10 pr-10"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               />
               <button
                 type="button"
@@ -121,7 +121,7 @@ const ResetPassword = () => {
                 type={showPassword ? 'text' : 'password'}
                 {...register('confirmPassword')}
                 className="input-field pl-10"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               />
             </div>
             {errors.confirmPassword && (

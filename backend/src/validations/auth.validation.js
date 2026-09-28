@@ -1,10 +1,16 @@
 const { z } = require('zod');
 
+// Single source of truth for the enforced minimum. The clients each carry their
+// own copy of this rule (frontend Login/Register/ResetPassword/Settings, mobile
+// login/register/reset-password/settings) and must be kept in step, or a user
+// types 7 characters, passes client validation, and gets a server error back.
+const PASSWORD_MIN = 8;
+
 const registerSchema = z.object({
   body: z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').max(50, 'Name cannot exceed 50 characters'),
     email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z.string().min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`),
   }),
 });
 
@@ -53,8 +59,8 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z.object({
   body: z.object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6),
+    password: z.string().min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`),
+    confirmPassword: z.string().min(PASSWORD_MIN),
   }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
@@ -84,7 +90,9 @@ const validate = (schema) => {
 };
 
 module.exports = {
-  registerSchema,
+    PASSWORD_MIN,
+    registerSchema,
+
   loginSchema,
   updateProfileSchema,
   forgotPasswordSchema,

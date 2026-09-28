@@ -56,7 +56,7 @@ const Settings = () => {
   const handleChangePassword = (e) => {
     e.preventDefault();
     if (passwords.newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters');
+      setPasswordError('New password must be at least 8 characters');
       return;
     }
     if (passwords.newPassword !== passwords.confirmPassword) {

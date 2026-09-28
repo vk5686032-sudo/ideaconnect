@@ -11,7 +11,7 @@ import authApi from '../../api/auth.api';
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -60,7 +60,7 @@ const Register = () => {
           <h2 className="text-xl font-bold mb-2">Account Created!</h2>
           <p className="text-gray-600 text-sm mb-6">
             We sent a verification link to <span className="font-medium">{registeredEmail}</span>.
-            You can start exploring right away — verifying your email keeps your account secure and
+            You can start exploring right away â€” verifying your email keeps your account secure and
             enables full features later.
           </p>
           <div className="space-y-2">
@@ -125,7 +125,7 @@ const Register = () => {
                 type={showPassword ? 'text' : 'password'}
                 {...register('password')}
                 className="input-field pl-10 pr-10"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               />
               <button
                 type="button"
@@ -152,7 +152,7 @@ const Register = () => {
                 type="password"
                 {...register('confirmPassword')}
                 className="input-field pl-10"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               />
             </div>
             {errors.confirmPassword && (

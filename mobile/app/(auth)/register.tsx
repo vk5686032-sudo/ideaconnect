@@ -25,7 +25,7 @@ const registerSchema = z
   .object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -95,7 +95,7 @@ export default function RegisterScreen() {
             <Text className="font-sans-semibold text-gray-700 dark:text-gray-300">
               {registered.email}
             </Text>
-            . You can start exploring right away — verifying your email keeps
+            . You can start exploring right away â€” verifying your email keeps
             your account secure and enables full features later.
           </Text>
           <Button
@@ -166,7 +166,7 @@ export default function RegisterScreen() {
                 label="Password"
                 value={value}
                 onChangeText={onChange}
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 secureTextEntry={!showPassword}
                 error={errors.password?.message}
                 leftIcon={<Lock size={18} color="#9ca3af" strokeWidth={2} />}
@@ -195,7 +195,7 @@ export default function RegisterScreen() {
                 label="Confirm Password"
                 value={value}
                 onChangeText={onChange}
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 secureTextEntry={!showPassword}
                 error={errors.confirmPassword?.message}
                 leftIcon={<Lock size={18} color="#9ca3af" strokeWidth={2} />}
@@ -204,7 +204,7 @@ export default function RegisterScreen() {
           />
 
           <Button
-            title={isSubmitting ? 'Creating account…' : 'Sign Up'}
+            title={isSubmitting ? 'Creating accountâ€¦' : 'Sign Up'}
             onPress={handleSubmit(onSubmit)}
             loading={isSubmitting}
           />

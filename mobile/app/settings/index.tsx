@@ -25,7 +25,7 @@ import type { ApiError } from '@/types/models';
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password required'),
-    newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -172,7 +172,7 @@ export default function SettingsScreen() {
             <FieldLabel>Sessions</FieldLabel>
             <Button
               title={
-                loggingOutAll ? 'Signing out everywhere…' : 'Log out of all devices'
+                loggingOutAll ? 'Signing out everywhereâ€¦' : 'Log out of all devices'
               }
               variant="outline"
               loading={loggingOutAll}
@@ -195,7 +195,7 @@ export default function SettingsScreen() {
             </Text>
             <Button
               title={
-                disablingPush ? 'Turning off…' : 'Turn off push on this device'
+                disablingPush ? 'Turning offâ€¦' : 'Turn off push on this device'
               }
               variant="outline"
               loading={disablingPush}
@@ -212,10 +212,10 @@ export default function SettingsScreen() {
           <Card>
             <FieldLabel>About</FieldLabel>
             <Text className="font-sans text-sm text-gray-700 dark:text-gray-300">
-              IdeaConnect · v{appVersion}
+              IdeaConnect Â· v{appVersion}
             </Text>
             <Text className="mt-1 font-sans text-[11px] text-gray-400 dark:text-gray-500">
-              Collaborative innovation platform — share ideas, build teams,
+              Collaborative innovation platform â€” share ideas, build teams,
               ship projects together.
             </Text>
           </Card>

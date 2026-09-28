@@ -23,7 +23,7 @@ import type { ApiError } from '@/types/models';
 
 const resetSchema = z
   .object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -135,7 +135,7 @@ export default function ResetPasswordScreen() {
                 label="New Password"
                 value={value}
                 onChangeText={onChange}
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 secureTextEntry={!showPassword}
                 error={errors.password?.message}
                 leftIcon={<Lock size={18} color="#9ca3af" strokeWidth={2} />}
@@ -164,7 +164,7 @@ export default function ResetPasswordScreen() {
                 label="Confirm Password"
                 value={value}
                 onChangeText={onChange}
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 secureTextEntry={!showPassword}
                 error={errors.confirmPassword?.message}
                 leftIcon={<Lock size={18} color="#9ca3af" strokeWidth={2} />}
@@ -173,7 +173,7 @@ export default function ResetPasswordScreen() {
           />
 
           <Button
-            title={isSubmitting ? 'Resetting…' : 'Reset Password'}
+            title={isSubmitting ? 'Resettingâ€¦' : 'Reset Password'}
             onPress={handleSubmit(onSubmit)}
             loading={isSubmitting}
           />
