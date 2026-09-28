@@ -1,8 +1,16 @@
 const Notification = require('../models/Notification');
-const User = require('../models/User');
 const { getIO } = require('../config/socket');
 const { sendPushToUser } = require('./push.service');
 
+/**
+ * Create a notification, plus its realtime and push delivery.
+ *
+ * Deliberately never throws: all 21 call sites are bare `await`s inside
+ * controller try-blocks whose catch turns a throw into a 5xx, so a failed
+ * notification would fail the comment, like or project update that triggered
+ * it. A failure is logged with the recipient and type instead, and null is
+ * returned so a caller that cares can check.
+ */
 const create = async (notificationData) => {
   try {
     const notification = await Notification.create(notificationData);
@@ -16,7 +24,12 @@ const create = async (notificationData) => {
         notification: notification.toObject ? notification.toObject() : notification,
       });
     } catch (socketError) {
-      // Socket.io not initialized (e.g. during seeding) — DB record is enough
+      // Socket.io not initialized (e.g. during seeding) — the DB record is the
+      // source of truth, so a missed realtime emit is not a failure.
+      console.warn(
+        `[notification] realtime emit skipped (recipient=${notification.recipient}):`,
+        socketError.message
+      );
     }
 
     // Expo push for mobile devices (fire-and-forget, best effort)
@@ -33,7 +46,10 @@ const create = async (notificationData) => {
 
     return notification;
   } catch (error) {
-    console.error('Notification error:', error);
+    console.error(
+      `[notification] create failed (recipient=${notificationData?.recipient}, type=${notificationData?.type}):`,
+      error.message
+    );
     return null;
   }
 };

@@ -35,4 +35,8 @@ module.exports = {
     geminiKey: process.env.GEMINI_API_KEY,
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  // Custom URL scheme of the mobile app, so verification/reset emails can
+  // offer an "open in app" deep link. Must match the `scheme` in
+  // mobile/app.json. Leave blank to omit the app link.
+  mobileScheme: process.env.MOBILE_SCHEME || 'ideaconnect',
 };
