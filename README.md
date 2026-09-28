@@ -163,6 +163,10 @@ For a device on the same Wi-Fi, use your LAN IP in `frontend/.env` (`VITE_API_UR
 Run the whole stack (MongoDB + backend + nginx-served frontend) with one command:
 
 ```bash
+# JWT_SECRET is required — compose refuses to start without it.
+# Generate one and put it in a root .env next to docker-compose.yml:
+openssl rand -hex 48
+
 docker compose up --build
 # → http://localhost:8080
 ```
@@ -173,6 +177,46 @@ backend, so the browser uses a single origin. Load demo data with:
 ```bash
 docker compose exec backend node src/seed.js
 ```
+
+### Deploying to production
+
+The container runs with `NODE_ENV=production`, which turns on checks that are off
+during local development. Two of them need a one-time step before the first deploy:
+
+```bash
+# 1. Required. Email verification is enforced in production and
+#    User.isVerified defaults to false, so every account that predates
+#    real email delivery would otherwise be locked out of all write routes.
+#    Dry run first:
+docker compose exec backend npm run backfill:verified
+docker compose exec backend npm run backfill:verified -- --apply
+
+# 2. Required. Set in the root .env, see above.
+
+# Optional. Without SMTP, password-reset and verification mails are silently
+# skipped — the endpoints still answer 200, so nothing looks broken until you
+# go looking for a mail that never arrived. Set SMTP_HOST/PORT/USER/PASS.
+# Mailtrap's free tier is enough for a staging box.
+
+# Optional. Without OPENAI_API_KEY, idea analysis returns mock scores.
+# Optional. Without Cloudinary, uploads go to local disk in the volume.
+```
+
+What production mode changes, in case you are debugging a surprise:
+
+| Behaviour | Development | Production |
+|---|---|---|
+| `localhost:5173/5174/8081` in CORS | allowed | dropped |
+| `/api/v1/docs` (OpenAPI UI + spec) | served | 404 unless `SERVE_API_DOCS=true` |
+| Email verification (`checkVerification`) | bypassed | enforced |
+| Rate-limit skip for private IPs | yes | never |
+| Credential endpoints | 600 / 15 min | 10 / 15 min (`AUTH_RATE_LIMIT_MAX`) |
+| API docs at `/api/v1/docs.json` | 200 | 404 |
+
+Serve the stack over HTTPS. Terminate TLS at the proxy and pass
+`X-Forwarded-Proto` — `trust proxy` is already set to 1 hop, so the app reads
+the real client address and the rate limiter buckets correctly. Once the
+domain is live, send HSTS with `includeSubDomains`.
 
 ---
 
