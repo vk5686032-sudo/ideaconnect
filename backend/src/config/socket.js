@@ -1,20 +1,17 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const config = require('./env');
+const { getAllowedOrigins } = require('../utils/origins');
 
 let io;
 
 const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: [
-        'http://localhost:5173',
-        // Expo web (`npm run web` in mobile/) serves from 8081. Needed for the
-        // polling transport, which a browser origin-checks like any request.
-        'http://localhost:8081',
-        'http://127.0.0.1:8081',
-        process.env.FRONTEND_URL,
-      ].filter(Boolean),
+      // Same allowlist as the REST layer. This used to be a separate hardcoded
+      // array, so a comma-separated FRONTEND_URL worked for REST but silently
+      // broke websockets, and the localhost dev origins leaked into production.
+      origin: getAllowedOrigins(),
       methods: ['GET', 'POST'],
       credentials: true,
     },

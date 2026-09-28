@@ -9,7 +9,8 @@
     "seed": "node src/seed.js",
     "seed:dry": "node src/seed.js --dry",
     "backfill:reputation": "node scripts/backfill-reputation.js",
-    "test": "node --test src/__tests__/*.test.js"
+    "test": "node --test src/__tests__/*.test.js",
+    "backfill:verified": "node scripts/backfill-verified.js"
   },
   "keywords": [
     "mern",

@@ -7,6 +7,7 @@ const swaggerUi = require('swagger-ui-express');
 const config = require('./config/env');
 const errorHandler = require('./middlewares/errorHandler');
 const { shouldSkipLimiting } = require('./utils/ip');
+const { getAllowedOrigins } = require('./utils/origins');
 const openapiSpec = require('./docs/swagger');
 
 // Import routes
@@ -33,25 +34,7 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS
-const getAllowedOrigins = () => {
-  const configuredOrigins = (config.frontendUrl || '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  return [
-    ...configuredOrigins,
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    // Expo web (`npm run web` in mobile/) serves from 8081, not 5173.
-    'http://localhost:8081',
-    'http://127.0.0.1:8081',
-  ];
-};
-
+// CORS — allowlist shared with the socket.io layer, see utils/origins.js
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -131,8 +114,19 @@ app.use('/api/v1', apiRouter);
 app.use('/api', apiRouter);
 
 // OpenAPI docs (raw JSON + Swagger UI)
-app.get('/api/v1/docs.json', (req, res) => res.json(openapiSpec));
-app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
+//
+// Development only. The spec is a full map of every route, the schemas behind
+// them and the error shapes, published unauthenticated — free reconnaissance.
+// Set SERVE_API_DOCS=true to expose it in production if you want it there
+// deliberately (e.g. behind an IP allowlist at the proxy).
+if (config.nodeEnv !== 'production' || process.env.SERVE_API_DOCS === 'true') {
+  app.get('/api/v1/docs.json', (req, res) => res.json(openapiSpec));
+  app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
+} else {
+  app.get('/api/v1/docs.json', (req, res) =>
+    res.status(404).json({ success: false, message: 'Not found' })
+  );
+}
 
 // 404 handler
 app.use((req, res) => {
