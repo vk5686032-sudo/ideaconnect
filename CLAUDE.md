@@ -35,14 +35,18 @@ npm test          # Vitest
 
 ### Mobile (from `mobile/`)
 ```bash
-npm start         # Expo
+npm start         # Expo. Detects the LAN address first (prestart -> scripts/lan-ip.js)
+npm run lan-ip    # just print/write the detected address
 npm run android   # Android
 npm run ios       # iOS
 npm run typecheck # tsc --noEmit (must be zero errors)
 npm run lint      # expo lint
-npm test          # jest (jest-expo preset)
+npm test          # jest (jest-expo preset) — needs --forceExit, see Testing
 npm run test:coverage
 ```
+
+`npm start` regenerates `mobile/.env.local` every time, so nothing is hardcoded and nothing goes
+stale when the wifi changes. Override with `LAN_IP=<addr> npm start` (`10.0.2.2` for an emulator).
 
 ### Docker (from repo root)
 ```bash
@@ -77,10 +81,17 @@ Copy from `.env.example`. Key variables:
 
 ### Frontend (`frontend/.env`)
 ```
-VITE_API_URL=http://localhost:5000/api/v1
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_URL=/api/v1
+VITE_SOCKET_URL=
 ```
-Leave both empty to use the same origin (nginx/Docker proxies `/api` and `/socket.io`).
+
+Both are relative/same-origin, which is what CI and Docker already build, so dev and prod are the
+same shape. `vite.config.js` proxies `/api` and `/socket.io` to `localhost:5000` (`ws: true` for
+the upgrade), so **no address is ever configured for the web app** and the wifi is irrelevant. An
+empty socket URL means "connect to the page origin" — see `config/endpoints.js`; it must not fall
+back to a localhost default.
+
+Only override `VITE_API_TARGET` if the backend is not on `localhost:5000`.
 
 ### Mobile (`mobile/.env`)
 

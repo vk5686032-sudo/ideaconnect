@@ -68,6 +68,47 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 >    said 8.
 > 3. **The OpenAPI spec published `minLength: 6`** in three places, so the documented contract did
 >    not match enforcement.
+>
+> *Same session, later: hardcoded addresses, and a websockets bug the deployed build had.* Chasing
+> "how do I stop hardcoding my LAN IP" turned up a production fault, so it is worth recording even
+> though none of it is mobile UI.
+>
+> - **Websockets were dead in the Docker build.** `docker-compose.yml` and CI both build with
+>   `VITE_SOCKET_URL=""` and rely on nginx proxying `/socket.io`, and the compose comment says so
+>   explicitly. But the code was `VITE_SOCKET_URL || 'http://localhost:5000'`, and `""` is falsy, so
+>   the `||` replaced it: every deployed visitor's browser dialled port 5000 on **their own
+>   machine**. Chat, typing, presence and notification pushes were all silently dead, with no error
+>   to show for it. Resolution now lives in `frontend/src/config/endpoints.js`, where empty means
+>   *same origin* (`undefined` to socket.io-client) rather than a localhost default.
+> - **The web app no longer contains an address at all.** `frontend/vite.config.js` proxies `/api`
+>   and `/socket.io` (`ws: true`), and `.env` uses the same relative values CI already builds with —
+>   so dev and prod are now the same shape, and the wifi is irrelevant to the browser.
+> - **Mobile auto-detects, because a phone cannot be proxied.** `scripts/lan-ip.js` runs as a
+>   `prestart` hook (not `predev` — this package's script is `start`), finds the LAN address, skips
+>   virtual adapters, health-checks `/api/v1/health` on each candidate, and writes `.env.local`
+>   (gitignored). It exits non-zero rather than starting Expo against a dead address.
+>   `LAN_IP=<addr> npm start` overrides it, and an override **skips** the health check — the
+>   emulator's `10.0.2.2` only resolves from inside the emulator, so probing it would reject a
+>   working setup. That was a real bug in the first draft, caught by testing both branches.
+> - **`eas.json` no longer bakes in a private LAN address.** `EXPO_PUBLIC_*` are inlined into the
+>   bundle at build time on EAS's servers, where such an address is unreachable, so the development
+>   profile now carries an obviously-invalid `REPLACE_WITH_A_REACHABLE_HOST` placeholder. The base
+>   profile already read them from the environment, which is correct for a cloud build.
+> - **Consequence to remember:** opening the web app from a *phone* on the wifi no longer works,
+>   because the Vite proxy only helps browsers on the same machine. That needs the absolute URL
+>   back if it is ever wanted.
+>
+> *Position at the end of the session:* 25 commits ahead of `origin/main`, **not pushed** (held
+> deliberately for review). Gate green: backend 69, frontend 32, mobile 31, OpenAPI 117/117.
+> Docker images have still never been built — the daemon is not running — and the two compose
+> fixes (uploads volume path, required `JWT_SECRET`) have only been verified with
+> `docker compose config`, never by an actual `compose up`. That is the single highest-value thing
+> left, because it is the only unproven claim in the README.
+>
+> Still outstanding, in the order I would take them: (1) `docker compose up` end to end; (2) the
+> Phase 2/3/6 ACs, which are the largest untested surface; (3) `eas login` + a development build,
+> which unblocks closed-app push and the `ideaconnect://` deep link; (4) SMTP and an OpenAI key,
+> so email is no longer silently skipped and AI stops returning mock scores.
 
 ---
 

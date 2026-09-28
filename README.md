@@ -124,9 +124,17 @@ cp .env.example .env
 Frontend (`frontend/.env`):
 
 ```
-VITE_API_URL=http://localhost:5000/api/v1
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_URL=/api/v1
+VITE_SOCKET_URL=
 ```
+
+> No address to configure. `vite.config.js` proxies `/api` and `/socket.io` to the backend, so the
+> browser sees a single origin — the same shape the Docker image uses via nginx. Set
+> `VITE_API_TARGET` only if your backend is not on `localhost:5000`.
+>
+> The **mobile** app does need a reachable address, because a phone cannot be proxied — but you
+> never write it: `npm start` detects your LAN IP and writes `.env.local` for you. See
+> [docs/mobile/setup-guide.md](docs/mobile/setup-guide.md).
 
 > Without real SMTP / Cloudinary / OpenAI keys the app still runs: emails are **skipped cleanly**
 > (logged as `[email:skipped]`), uploads fall back to local disk, and AI analysis returns mock scores.
@@ -330,7 +338,8 @@ npm run dev                  # nodemon
 npm run seed                 # load demo data (clears DB first)
 npm run seed:dry             # preview seed
 npm run backfill:reputation  # recompute reputation from existing activity
-npm test                     # node:test + supertest (33 tests)
+npm run backfill:verified    # REQUIRED before a production deploy (see Docker below)
+npm test                     # node:test + supertest (69 tests)
 node scripts/verify-openapi.js   # asserts the OpenAPI spec covers every route
 
 # Frontend
@@ -338,20 +347,21 @@ npm run dev
 npm run build
 npm run preview
 npm run lint                 # oxlint
-npm test                     # vitest (24 tests)
+npm test                     # vitest (32 tests)
 
 # Mobile
-npm start                    # Expo
+npm start                    # Expo (detects your LAN IP first, see setup guide)
 npm run typecheck            # tsc --noEmit
 npm run lint
-npm test                     # jest / jest-expo (29 tests)
+npm test                     # jest / jest-expo (31 tests; needs --forceExit locally)
 ```
 
 Backend tests use dedicated databases (`ideaconnect_test`, `…_chataccess`, `…_socketauth`,
-`…_email` — one per file, because the runner executes files concurrently and each wipes its own
-collections) and boot the app on an ephemeral port, so they never touch your dev data or clash
-with a running server. They require a local MongoDB on `localhost:27017`; override with
-`MONGODB_URI_TEST` / `MONGODB_URI_CHATACCESS` / `MONGODB_URI_SOCKETAUTH` / `MONGODB_URI_EMAIL`.
+`…_email`, `…_enum`, `…_reuse` — one per file, because the runner executes files concurrently and
+each wipes its own collections) and boot the app on an ephemeral port, so they never touch your dev
+data or clash with a running server. They require a local MongoDB on `localhost:27017`; override
+with `MONGODB_URI_TEST` / `MONGODB_URI_CHATACCESS` / `MONGODB_URI_SOCKETAUTH` /
+`MONGODB_URI_EMAIL` / `MONGODB_URI_ENUM` / `MONGODB_URI_REUSE`.
 
 **CI** (`.github/workflows/ci.yml`) runs on every push/PR to `main`: backend tests + OpenAPI
 verification, frontend lint/test/build, mobile typecheck/lint, and a Docker build with a live
