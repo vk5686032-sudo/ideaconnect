@@ -746,11 +746,14 @@ const IdeaDetail = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-purple-50 rounded-lg p-3 text-center">
                     <p className="text-xs text-gray-600">Feasibility</p>
-                    <p className="text-xl font-bold text-purple-600">{idea.feasibilityScore ?? '—'}/10</p>
+                    {/* Scores are 0-100: the Mongoose model pins min 0 / max 100
+                        and the service prompt asks for 0-100. This used to read
+                        "/10", which rendered the mock's 75 as "75/10". */}
+                    <p className="text-xl font-bold text-purple-600">{idea.feasibilityScore ?? '—'}/100</p>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3 text-center">
                     <p className="text-xs text-gray-600">Innovation</p>
-                    <p className="text-xl font-bold text-blue-600">{idea.innovationScore ?? '—'}/10</p>
+                    <p className="text-xl font-bold text-blue-600">{idea.innovationScore ?? '—'}/100</p>
                   </div>
                 </div>
 
