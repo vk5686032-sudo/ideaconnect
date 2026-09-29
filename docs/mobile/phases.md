@@ -86,11 +86,12 @@ which is the authoritative progress log. This file is the plan of record.
 
 **AC:** 12 checks pending — see handoff.md.
 
-## Phase 7 — Polish & Release Prep 🔴 — ⬜ not started
+## Phase 7 — Polish & Release Prep 🟡 — error/retry done, rest not started
 - [ ] Loading skeletons for all lists; empty states with illustrations/icons
-- [ ] Error states with retry — **currently only on 4 detail screens**; the tab
-      list screens (ideas, projects, chat, notifications, bookmarks) have loading
-      and empty states but no error/retry branch
+- [x] Error states with retry — all 7 list screens (ideas, projects, chat,
+      notifications, bookmarks, home tasks, both mentor lists) **and** the
+      cold-start boot failure, which used to hang on the splash forever: the
+      api client had no request timeout, so an unreachable server never settled
 - [x] App icon, adaptive icon, splash (indigo brand), name "IdeaConnect"
 - [x] Deep-link scheme `ideaconnect://` declared in `app.json`
 - [x] `ios.bundleIdentifier` / `android.package` set and `eas.json` added with

@@ -7,20 +7,23 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 
 If you are picking this up cold, in this order:
 
-1. **This file**, top to bottom, is the running log — it records what was verified in a real
-   browser, not just what was written.
+1. **This file**, top to bottom, is the running log — it records what was verified against a real
+   running app, not just what was written.
 2. **[phases.md](./phases.md)** — the phase plan and what each phase owns.
 3. **[prd.md](./prd.md)** — product requirements and the acceptance criteria the phases are
-   checked against. Phase 2, 3 and 6 have now been swept end to end; 4 and 5 remain.
+   checked against.
 
 Current state, short version:
 
-- Gate green: **backend 69, frontend 58, mobile 31, OpenAPI 117/117**, plus frontend
+- Gate green: **backend 69, frontend 58, mobile 36, OpenAPI 117/117**, plus frontend
   lint/build and mobile typecheck/lint.
 - Docker builds and has been verified running, not just `compose config`.
 - **Nothing is pushed.** The local branch is ahead of `origin/main` and is held for review.
-- Biggest remaining gaps: Phases 4/5 device ACs, and EAS (needs `eas login`, a real Expo
-  project id, and a publicly reachable API URL).
+- Swept against a real app: Phase 2, 3 and 6 in the browser; Phase 1a auth-core and the Phase 7
+  error/retry work on a device.
+- Biggest remaining gaps: Phase 5 closed-app push and the `ideaconnect://` deep links, both of
+  which need a real EAS build (`eas login`, an Expo project id, and a publicly reachable API URL).
+  Then Phase 7's skeletons/performance pass, and Phases 4/5's remaining device ACs.
 
 > **2026-09-27 note (web platform).** The web/backend were audited and fixed in the same session
 > that reconciled this folder. Highlights relevant to mobile: the backend now serves a **complete
@@ -233,7 +236,7 @@ Current state, short version:
 >   back if it is ever wanted.
 >
 > *Position at the end of the session:* the local branch is **ahead of `origin/main` and not pushed**
-> (held deliberately for review). Gate green: backend 69, frontend 58, mobile 31, OpenAPI 117/117.
+> (held deliberately for review). Gate green: backend 69, frontend 58, mobile 36, OpenAPI 117/117.
 > `git log --oneline origin/main..HEAD` gives the exact list — deliberately not written down here,
 > because it goes stale the moment anything is committed.
 > Docker has been built and verified end to end since the paragraph above was written: images
@@ -318,15 +321,42 @@ app/(tabs)/profile.tsx    avatar/name/email/role badge/rep card + working Log Ou
 
 Conventions locked so far: named-only exports for api modules (`import { authApi }`), PascalCase component files, no comments in code, zero tsc errors + zero lint warnings required before commit.
 
-## ⏳ Phase 1a+1b — pending device ACs (user, test together)
+## 🟡 Phase 1a+1b — auth-core swept on device; #8/#9 still blocked
 
-Two of these are now covered by backend tests, but **not** by a device run, so they stay on this
-list. Tick them on device; do not tick them off the test alone.
+Verified on a real device (OnePlus RMX3686, Android 15, Expo Go against the live backend).
+What passed:
 
-- **#4 logout → reuse attempt fails** — now enforced server-side *and* covered by
+- **#1 wrong password** — "Invalid credentials" toast, stays on the login screen, no logout loop.
+  Client-side "Password is required" also fires before any request.
+- **#2 kill + reopen** — `am force-stop` then a cold relaunch comes back straight to an
+  authenticated Home. SecureStore persistence holds.
+- **3 token expiry → transparent refresh** — rather than wait out the 15-minute default, the
+  backend was temporarily run with `JWT_EXPIRE=10s` and the app re-logged-in. After the token was
+  ~40s expired, a project detail screen loaded a full fresh payload (project, milestones, members,
+  tasks) with no logout and no error. `JWT_EXPIRE` was then restored to `15m` and the backend
+  re-verified at 900s lifetime. **If you repeat this, the `.env` is git-ignored and the working
+  tree stays clean, but do restore it.**
+- **#4 logout → reuse fails** — still only test-verified. Signing out on device works, but proving
+  reuse needs a retired token, which is not reachable from the UI.
+- **#5 footer navigation** and **#7 forgot-password generic confirmation** — verified in the web
+  client on 09-28; not re-run on device.
+
+**Still blocked:** #6's "Account Created" interstitial, #8 (reset via `ideaconnect://`) and #9
+(verify-email link). #8 and #9 need a real EAS build — Expo Go cannot register a custom URL scheme,
+so `adb shell am start -a android.intent.action.VIEW -d "ideaconnect://..."` will not route.
+#6 is only impractical to drive over adb (masked field, autofill), not blocked.
+
+**Driving the app over adb, for whoever does this next.** `adb shell input text` types into the
+field you last tapped, and the *tab bar needs a tap on the label, not the icon* — tapping the icon's
+centre does nothing. Never send `keyevent 4` to dismiss the keyboard: it exits the app to Expo
+Go's server list when the keyboard is already closed. Scroll before dumping, because
+`uiautomator` reports clipped (inverted) bounds mid-scroll and any tap helper will compute a
+nonsense point from them.
+
+- **#4 logout → reuse attempt fails** — enforced server-side *and* covered by
   `backend/src/__tests__/refreshReuse.test.js`. Rotation marks the spent token `revokedAt` rather
   than deleting it, and replaying a retired token revokes every session for the account. A
-  never-issued token still changes nothing. Test-verified; needs a device pass.
+  never-issued token still changes nothing. Test-verified; still needs a device pass.
 - **#7 forgot-password with a random email → generic confirmation, no enumeration leak** — the
   endpoint returns one indistinguishable `200` and never reports whether an address exists;
   covered by `backend/src/__tests__/authEnumeration.test.js` (`register` is still an oracle — see
@@ -337,17 +367,18 @@ list. Tick them on device; do not tick them off the test alone.
   "Account Created" interstitial between register and Home is still untested on device.
 
 Auth-core (1a):
-1. Wrong password → toast error, stays on login (no logout loop)
-2. Kill + reopen app while logged in → still authenticated (splash → Home) — ✅ **verified 09-28**
-3. Manually expire access token → next API call auto-refreshes transparently
+1. Wrong password → toast error, stays on login (no logout loop) — ✅ device-verified
+2. Kill + reopen app while logged in → still authenticated (splash → Home) — ✅ device-verified
+3. Manually expire access token → next API call auto-refreshes transparently — ✅ device-verified
+   (via a temporary `JWT_EXPIRE=10s`)
 4. Logout → server revokes refresh token (reuse attempt must fail) — 🧪 test-verified, see above
 
 Screens (1b):
-5. Login footer "Sign up" / "Forgot password?" navigate correctly
-6. Register new account → auto-login held in memory → "Account Created" screen → Continue to App → Home tab authed; duplicate-email register shows server error toast
+5. Login footer "Sign up" / "Forgot password?" navigate correctly — ✅ browser-verified
+6. Register new account → auto-login held in memory → "Account Created" screen → Continue to App → Home tab authed; duplicate-email register shows server error toast — ✅ browser-verified; the interstitial still needs device
 7. Forgot password with random email → generic confirmation (no enumeration leak) — 🧪 test-verified, see above
-8. Reset via `ideaconnect://reset-password?token=…` deep link (adb: `adb shell am start -a android.intent.action.VIEW -d "<url>"`) → set new password → lands authed on Home; bad/expired token → invalid-link screen with "Request a New Link"
-9. Verify-email link (signed out) → auto-verifies or resend-by-email fallback works
+8. Reset via `ideaconnect://reset-password?token=…` deep link — 🚫 blocked, needs an EAS build
+9. Verify-email link (signed out) — 🚫 blocked, same reason
 
 Demo accounts: `priya@ideaconnect.dev` · `mentor@ideaconnect.dev` · `admin@ideaconnect.dev` / `password123`. Backend must run (`cd backend && npm run dev`). Deep links need a real reset token — easiest path: trigger forgot-password for a seeded user and read the token from the backend console/DB (emails point at web frontend, not the mobile scheme).
 
@@ -418,9 +449,53 @@ app/_layout.tsx              root Stack registers 'ideas' group headerShown:fals
 
 Gotchas learned: mutation onSuccess results are axios envelopes (`res.data.data.*`); expo-router typed routes reject template-literal hrefs for dynamic segments → use `{ pathname: '/ideas/[id]', params }`; import type must precede exports (import/first); merge duplicate module imports (import/no-duplicates); infinite feeds sorted by createdAt DUPLICATE items across cached pages after any create/delete shifts positions — always dedupe by `_id` when flatMapping pages (see ideas/projects tabs); never use bare tag/tech strings as React keys (backend doesn't enforce uniqueness) — suffix with index; JWT_EXPIRE=15m means sockets die 15min after login — socket.ts self-heals via connect_error→refreshAccessTokenNow→re-auth (30s throttle), room shows amber "Reconnecting chat…" banner; Expo Go Android runs keyboard PAN mode and KAV behavior=undefined is a no-op — chat composer pads manually via keyboardDidShow/Hide height listeners (app.json now sets softwareKeyboardLayoutMode:resize for future builds); chat room MUST re-join on every socket 'connect' event (mount-time join races the async connect → emits into void); cache writers must SEED envelopes (`emptyPage()`) instead of dropping when absent — bailing on missing cache made sent messages invisible during load windows; render attachments BY MIME TYPE — `<Image>` silently renders nothing for videos/files; sendAttachment already broadcasts message:received (chat.controller.js); expo-notifications THROWS AT IMPORT TIME in Expo Go SDK53+ Android ("removed from Expo Go") — NEVER import statically: guard `Constants.appOwnership==='expo'` + dynamic `await import()` inside service functions; typed-route regeneration is flaky between `/notifications` vs `/notifications/index` — rerun `expo export` then match whatever router.d.ts emits.
 
+## Phase 7 — error states with retry: done and device-verified
+
+This is the one Phase 7 item that was both unblocked and genuinely broken, so it went first.
+
+**The list screens.** A failed query leaves `data` undefined, so the list rendered empty and
+`ListEmptyComponent` fell through to the "nothing here yet" copy — a dropped connection read as an
+empty account, indistinguishable from a genuinely empty one and with no way to retry. All seven now
+branch on `isError`: ideas, projects, chat, notifications, bookmarks, home's task widget, and both
+mentor lists. They share a new `ErrorState` component rather than repeating `EmptyState` + `Button`
+ten lines seven times; it takes the screen's own wording so a failed chat load does not say
+"Couldn't load projects".
+
+**The splash hang, which was the worse bug.** Cold start with the API unreachable pinned the app to
+the splash screen indefinitely — no message, no button, force-quit the only way out. Root cause: the
+axios instance had **no timeout**, and axios defaults to none, so any request whose packets are
+dropped rather than refused (firewall DROP, captive portal, wifi flapping) never settles.
+`hydrate()` awaits that request, so the app waited forever.
+
+- 20s default timeout on the api instance. The two uploads (chat attachment, avatar) get 60s —
+  neither had set its own, and a large file on a slow connection is legitimately slow.
+- `hydrate()` now distinguishes "could not reach the server" from "no session". An error with no
+  `response` never got an answer, so it becomes a retryable boot error; a real HTTP error is still a
+  real answer and still signs you out. Both used to land on `unauthenticated`, so opening the app on
+  a train looked exactly like being logged out.
+- `RootLayout` renders `ErrorState` with a retry instead of `null`.
+
+Verified on device by actually killing the backend, not by reasoning about it:
+
+- backend down + cold start → "Can't reach IdeaConnect" + Try again; backend back → one tap →
+  `GET /auth/me 200` → authenticated Home, no app restart.
+- backend down + a tab with no cache → "Couldn't load conversations" + Try again; backend back → one
+  tap → `GET /chats 200` → the conversation list renders.
+
+**Deliberately unchanged:** when a query fails *but has cached data*, the list keeps showing the
+stale rows. Blanking a list the user was reading because one background refetch failed is worse than
+stale. The error state is for the cold path.
+
+Five tests on `hydrate` in `src/store/__tests__/authSlice.test.ts` cover both failure modes and that
+a successful retry clears the flag. The boot-error test could not have passed before this change —
+the field did not exist.
+
+Still open in Phase 7: loading skeletons and richer empty states, the performance pass (FlashList,
+image caching), README/known-issues, and the first EAS build.
+
 ## Next up — Phase 7 (Polish & release prep) scope preview
 
-Loading skeletons for all lists; error states w/ retry; app icon/adaptive/splash (indigo brand); deep-link scheme verification (`ideaconnect://` for notifications + reset); EAS build profiles (development/preview/production) + internal distribution — validates closed-app push; performance pass (FlashList on long lists, image caching, Hermes already on); README/docs + known-issues list.
+Loading skeletons for all lists; ~~error states w/ retry~~ (done above); app icon/adaptive/splash (indigo brand); deep-link scheme verification (`ideaconnect://` for notifications + reset); EAS build profiles (development/preview/production) + internal distribution — validates closed-app push; performance pass (FlashList on long lists, image caching, Hermes already on); README/docs + known-issues list.
 
 ## ✅ Phase 6 — swept in the browser
 
