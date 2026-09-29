@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Picking up mobile work, or resuming an interrupted session?** Read
+> `docs/mobile/handoff.md` first — it opens with a "Start here" block giving the
+> current gate numbers, what has actually been verified in a real browser, and
+> what is still unproven. It is a session log, so trust it over assumptions about
+> what has been tested.
+
 ## Project Overview
 
 IdeaConnect is a full-stack MERN collaborative innovation platform where users share ideas, form

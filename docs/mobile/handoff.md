@@ -3,6 +3,25 @@
 Session-to-session progress log. Update after every work session.
 Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](./phases.md), etc.).
 
+## Start here
+
+If you are picking this up cold, in this order:
+
+1. **This file**, top to bottom, is the running log — it records what was verified in a real
+   browser, not just what was written.
+2. **[phases.md](./phases.md)** — the phase plan and what each phase owns.
+3. **[prd.md](./prd.md)** — product requirements and the acceptance criteria the phases are
+   checked against. Phase 2, 3 and 6 have now been swept end to end; 4 and 5 remain.
+
+Current state, short version:
+
+- Gate green: **backend 69, frontend 58, mobile 31, OpenAPI 117/117**, plus frontend
+  lint/build and mobile typecheck/lint.
+- Docker builds and has been verified running, not just `compose config`.
+- **Nothing is pushed.** The local branch is ahead of `origin/main` and is held for review.
+- Biggest remaining gaps: Phases 4/5 device ACs, and EAS (needs `eas login`, a real Expo
+  project id, and a publicly reachable API URL).
+
 > **2026-09-27 note (web platform).** The web/backend were audited and fixed in the same session
 > that reconciled this folder. Highlights relevant to mobile: the backend now serves a **complete
 > OpenAPI spec** (117/117 routes, verified by `backend/scripts/verify-openapi.js`), and
@@ -213,15 +232,17 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 >   because the Vite proxy only helps browsers on the same machine. That needs the absolute URL
 >   back if it is ever wanted.
 >
-> *Position at the end of the session:* 25 commits ahead of `origin/main`, **not pushed** (held
-> deliberately for review). Gate green: backend 69, frontend 32, mobile 31, OpenAPI 117/117.
-> Docker images have still never been built — the daemon is not running — and the two compose
-> fixes (uploads volume path, required `JWT_SECRET`) have only been verified with
-> `docker compose config`, never by an actual `compose up`. That is the single highest-value thing
-> left, because it is the only unproven claim in the README.
+> *Position at the end of the session:* the local branch is **ahead of `origin/main` and not pushed**
+> (held deliberately for review). Gate green: backend 69, frontend 58, mobile 31, OpenAPI 117/117.
+> `git log --oneline origin/main..HEAD` gives the exact list — deliberately not written down here,
+> because it goes stale the moment anything is committed.
+> Docker has been built and verified end to end since the paragraph above was written: images
+> build, every container reports healthy, nginx serves the SPA on `:8080` with `/api` and
+> `/socket.io` proxied, an uploaded file survives `docker compose up -d --force-recreate`, and the
+> production container returns `404` for the docs route.
 >
-> Still outstanding, in the order I would take them: (1) `docker compose up` end to end; (2) the
-> Phase 2/3/6 ACs, which are the largest untested surface; (3) `eas login` + a development build,
+> Still outstanding, in the order I would take them: (1) push, once the diff has been reviewed;
+> (2) the Phase 4/5 ACs — Phases 2, 3 and 6 are now swept; (3) `eas login` + a development build,
 > which unblocks closed-app push and the `ideaconnect://` deep link; (4) SMTP and an OpenAI key,
 > so email is no longer silently skipped and AI stops returning mock scores.
 
@@ -346,7 +367,11 @@ login.tsx                      added Sign up / Forgot password? footer actions
 
 Lint notes: react/no-unescaped-entities bites apostrophes inside RN <Text> (entities don't render natively) — rephrase instead ("we will", "New to IdeaConnect?"). react-hooks/set-state-in-effect forbids synchronous setState in effects — derive initial state via useState initializer. Hermes: array-spread of undefined (`[...x]`) throws "Cannot convert undefined value to object" — guard `x.data` not just `x` in every setQueryData updater (see chat cache utils pattern: `old?.data ?? []`).
 
-## ⏳ Phase 2 — pending device ACs (user)
+## ✅ Phase 2 — swept in the browser
+
+All twelve verified against a running stack. Two defects were found and fixed on the way (the
+Share sheet needed a clipboard fallback for browsers without Web Share, and the Idea Edit route
+was unreachable). The list below is the record of what was checked:
 
 1. Ideas tab: feed loads with pull-to-refresh; scrolling to bottom fetches page 2 (footer spinner)
 2. Search debounce works; changing category/status/sort chips resets pagination and shows fresh results
@@ -397,7 +422,12 @@ Gotchas learned: mutation onSuccess results are axios envelopes (`res.data.data.
 
 Loading skeletons for all lists; error states w/ retry; app icon/adaptive/splash (indigo brand); deep-link scheme verification (`ideaconnect://` for notifications + reset); EAS build profiles (development/preview/production) + internal distribution — validates closed-app push; performance pass (FlashList on long lists, image caching, Hermes already on); README/docs + known-issues list.
 
-## ⏳ Phase 6 — pending device ACs
+## ✅ Phase 6 — swept in the browser
+
+All twelve verified. Fixes made along the way: year fields now show a validation error instead of
+silently blocking save, `/users/change-password` was added to `AUTH_ENDPOINTS` (a wrong current
+password was triggering a token refresh and a retry), and logout-everywhere now revokes refresh
+tokens immediately. The list below is the record of what was checked:
 
 1. Profile tab shows stats row (ideas/projects/reputation), skills/interests chips, education/experience cards when present
 2. Edit Profile: change name/bio → save → header card reflects changes immediately (store sync)
@@ -526,20 +556,53 @@ app/users/[id].tsx          mini profile (avatar/name/Mentor badge/bio/skills ch
 app/projects/[id].tsx       members see "Open Team Chat" → GET /chats/project/:id → room
 ```
 
-## ⏳ Phase 3 — pending device ACs (user)
+## ✅ Phase 3 — all 12 ACs swept (browser, two accounts)
 
-1. Projects tab: feed loads, pull-to-refresh, infinite scroll page 2; search debounce works
-2. Status chips (planning/in-progress/on-hold/completed) filter correctly
-3. FAB → New Project: validation inline; create lands back with project visible in feed; creator is Owner+lead member automatically
-4. ProjectCard tap → detail: badges, owner row, progress %, tech chips, description all render
-5. Non-member sees "Request to join" → modal message → toast sent; owner sees it under Join Requests
-6. Owner accepts request → requester becomes member (detail refetch shows them); reject removes the entry
-7. Private project: non-member gets "Project unavailable" screen; member/owner can open
-8. Milestones: owner-only "+" adds one; owner tap toggles complete (strikethrough + count updates instantly)
-9. Members section lists everyone with role badges; owner row marked "· Owner"
-10. Tasks: "+ Add task" (members only) with title/assignee/priority chips appears in list instantly
-11. Tap task → status picker modal → change to completed → progress bar % on detail updates immediately AND after refetch matches server value
-12. Home widget shows my open tasks; status change from Home reflects in project detail too; tapping project name opens detail
+All twelve passed. Two real defects were found and fixed on the way; see the
+"Phase 3 — what was built" section below for the commits.
+
+1. **Pass** — feed loads; search debounce: 5 keystrokes produced exactly 1 request.
+2. **Pass** — status chips (planning/in-progress/on-hold/completed) all filter.
+3. **Pass** — validation inline; create → visible in feed; creator auto-added as
+   Owner **and** `lead` member.
+4. **Pass** — detail renders badges, owner row, progress %, tech chips, description.
+5. **Pass** — non-member "Request to Join" → `201`; owner sees the request with
+   sender name **and** message; no auto-join (members stayed at 1). Owner-only
+   guard holds: a non-member listing invitations gets `403 Only the project owner
+   can view join requests`.
+6. **Pass** — accept → `200`, requester becomes a member, Team 1→2, role `developer`.
+   Reject → `200`, requester stays out. Non-member *writes* are refused even on a
+   public project: `403 Only project members can create tasks`.
+7. **Pass** — private + non-member → `Project not found` (no existence leak) and the
+   web renders a "Project not found" screen with a Browse Projects link, not a
+   spinner or a crash. Member and owner still get through.
+8. **Pass, after a fix** — milestone toggle worked and applied the strikethrough,
+   but the header read just "Milestones" with no count, so the AC's "count updates
+   instantly" had nothing to update. Added `(n/m done)` matching the Tasks header.
+9. **Pass** — Team (2): owner row marked `(Owner)` with role `lead` and no role
+   control; members get a `Change role` select. Changing Marcus to `mentor` → `200`.
+10. **Pass** — Add Task (members only) → `201`; assignee, priority, description and
+    labels all render, and the card lands in the TO DO column.
+11. **Pass, after a fix** — the progress bar is the part that was already correct
+    (0% → 100% instantly, and 100% after a reload, matching the server). The board
+    was not: the task stayed in COMPLETED and the column counts went stale until a
+    full reload. `TaskBoard` merged server tasks by id preferring the whole local
+    object, so the server's status could never arrive. Now only the optimistic
+    `order` survives the merge. Covered by `TaskBoard.test.js` (4 cases, verified to
+    fail against the old logic).
+12. **Pass** — the Home "My Tasks" widget lists open tasks with project name and
+    status, and correctly drops a task from the list the moment it is completed
+    (4 tasks, one completed task excluded). Each row links through to the detail.
+    Note: the widget is read-only on web — status is changed from the project
+    detail or the board, which is the direction the AC describes.
+
+**Known limitation, deliberately not fixed.** After sending a join request the
+button still reads "Request to Join" rather than "Request Pending", because the
+project payload does not expose the caller's own pending invitation and the
+invitations query is owner-only. Re-clicking it returns `409 You already have a
+pending request to join`, so the invariant is safe and no duplicate rows are
+created — it is only a cosmetic repeat. Surfacing it properly means a backend
+field or a "my request" endpoint, which the AC does not ask for.
 
 ## Phase 3 — what was built
 

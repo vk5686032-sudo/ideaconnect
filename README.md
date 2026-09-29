@@ -347,7 +347,7 @@ npm run dev
 npm run build
 npm run preview
 npm run lint                 # oxlint
-npm test                     # vitest (32 tests)
+npm test                     # vitest (58 tests)
 
 # Mobile
 npm start                    # Expo (detects your LAN IP first, see setup guide)

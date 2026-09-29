@@ -41,7 +41,7 @@ which is the authoritative progress log. This file is the plan of record.
 
 **AC:** see [handoff.md](./handoff.md#-phase-1a1b--pending-device-acs-user-test-together) — 9 checks. 5 verified (2 on device, 3 in a browser), 1 test-verified only (#4 reuse), 3 untested (#3 transparent refresh, the `ideaconnect://` deep link which needs an EAS build, and the verify-email link).
 
-## Phase 2 — Ideas Feed & Detail 🔴 — ✅ code done · ⏳ device ACs pending
+## Phase 2 — Ideas Feed & Detail — ✅ code done · ✅ ACs swept (browser)
 **Goal:** The core consumption loop: discover → read → interact.
 
 - [x] Query hooks (`hooks/queries/useIdeas.ts`) with TanStack Query: infinite list keyed by filters
@@ -52,7 +52,7 @@ which is the authoritative progress log. This file is the plan of record.
 
 **AC:** 12 checks pending — see handoff.md.
 
-## Phase 3 — Projects & Tasks 🟡 — ✅ code done · ⏳ device ACs pending
+## Phase 3 — Projects & Tasks — ✅ code done · ✅ all 12 ACs swept (browser)
 - [x] Projects list (progress bars) + Project Detail (progress, milestones, members, tasks, open-chat)
 - [x] Task status change → `PUT /tasks/:id`
 - [x] My Tasks widget on Home (`GET /tasks/my`)
@@ -78,7 +78,7 @@ which is the authoritative progress log. This file is the plan of record.
 
 **AC:** 8 of 9 passed in-app; closed-app delivery deferred.
 
-## Phase 6 — Profile, Mentors & Settings 🟡 — ✅ code done · ⏳ device ACs pending
+## Phase 6 — Profile, Mentors & Settings — ✅ code done · ✅ ACs swept (browser)
 - [x] Own profile tab: stats, skills/interests, edit mode, avatar upload
 - [x] User Profile screen (others): Message + Request Mentorship
 - [x] Mentor directory: search, request flow, "My Requests" status chips
