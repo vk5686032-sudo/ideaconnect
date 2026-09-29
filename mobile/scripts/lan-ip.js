@@ -17,7 +17,6 @@ const os = require('os');
 const path = require('path');
 
 const PORT = Number(process.env.PORT) || 5000;
-const HEALTH = `http://localhost:${PORT}/api/v1/health`; // to test the host itself
 const TIMEOUT_MS = 1500;
 
 // Docker, WSL, Hyper-V and the VM tools all publish private IPv4 addresses that

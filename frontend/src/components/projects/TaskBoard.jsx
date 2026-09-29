@@ -33,6 +33,18 @@ const EMPTY_FORM = {
   labels: '',
 };
 
+// The drop handler writes `order` optimistically, so an in-flight refetch that
+// lands before the reorder mutation settles would otherwise undo the user's
+// drop. Carry that one field across, but let the server own everything else.
+// Merging the whole local object instead (the previous behaviour) meant a
+// status change from the edit modal never reached the board.
+export const mergeServerTasks = (prev, serverTasks) => {
+  const localOrder = new Map(prev.map((t) => [t._id, t.order]));
+  return serverTasks.map((t) =>
+    localOrder.has(t._id) ? { ...t, order: localOrder.get(t._id) } : t
+  );
+};
+
 const TaskBoard = ({ project }) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -64,14 +76,10 @@ const TaskBoard = ({ project }) => {
   // Stable dependency: only re-sync when the fetched task list actually changes
   const serverTaskKey = serverTasks.map((t) => t._id + ':' + (t.status || '') + ':' + (t.title || '')).join('|');
 
-  // Keep localTasks in sync with server data (merge by id so optimistic
-  // reorders aren't clobbered by stale intermediate refetches).
+  // Keep localTasks in sync with server data, preserving only the optimistic
+  // drop order. See mergeServerTasks for why the local copy must not win.
   useEffect(() => {
-    setLocalTasks((prev) => {
-      const map = new Map(prev.map((t) => [t._id, t]));
-      const merged = serverTasks.map((t) => map.get(t._id) || t);
-      return merged;
-    });
+    setLocalTasks((prev) => mergeServerTasks(prev, serverTasks));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverTaskKey]);
 
