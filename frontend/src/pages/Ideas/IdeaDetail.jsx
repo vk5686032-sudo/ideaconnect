@@ -22,6 +22,9 @@ const StarRating = ({ value, onChange }) => (
         key={star}
         type="button"
         onClick={() => onChange?.(star)}
+        // Icon-only, so without these they have no accessible name at all.
+        aria-label={onChange ? `Rate ${star} of 5` : `${value} of 5 stars`}
+        title={onChange ? `Rate ${star} of 5` : undefined}
         className={`p-0.5 ${onChange ? 'cursor-pointer hover:scale-110' : 'cursor-default'} transition-transform`}
       >
         <Star className={`w-5 h-5 ${star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
@@ -40,8 +43,13 @@ const IdeaDetail = () => {
   const [reviewRating, setReviewRating] = useState(0);
   const [isEditingReview, setIsEditingReview] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
+  // Deleting a comment used to fire immediately on a single click, with no way
+  // back. The idea delete has always confirmed first; this matches it.
+  const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState(null);
   const [editedContent, setEditedContent] = useState('');
   const [showDeleteIdea, setShowDeleteIdea] = useState(false);
+  // Set only when the clipboard is unavailable, so Share is never a dead end.
+  const [shareFallbackUrl, setShareFallbackUrl] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [reportingCommentId, setReportingCommentId] = useState(null);
@@ -123,6 +131,34 @@ const IdeaDetail = () => {
       queryClient.invalidateQueries(['comments', id]);
     },
   });
+
+  // Share. This button previously had no onClick at all, so it did nothing.
+  // Web Share API where the browser has it, copy-to-clipboard everywhere else —
+  // which is every desktop browser that does not implement it, and every
+  // browser where the user has dismissed it.
+  const shareUrl = `${window.location.origin}/ideas/${id}`;
+  const handleShare = async () => {
+    const payload = { title: idea?.title || 'Idea on IdeaConnect', url: shareUrl };
+    try {
+      if (navigator.share) {
+        await navigator.share(payload);
+        return;
+      }
+      throw new Error('no share');
+    } catch (error) {
+      // AbortError means the user dismissed the sheet, which is not a failure.
+      if (error?.name === 'AbortError') return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied to clipboard');
+    } catch {
+      // Clipboard can be blocked (insecure context, permissions). Fall back to
+      // showing the URL so the button is never a dead end.
+      setShareFallbackUrl(shareUrl);
+    }
+  };
 
   // Delete idea (owner or admin)
   const deleteIdeaMutation = useMutation({
@@ -398,7 +434,12 @@ const IdeaDetail = () => {
                 <Bookmark className="w-5 h-5" />
                 Save
               </button>
-              <button className="flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">
+              <button
+                onClick={handleShare}
+                title="Share this idea"
+                aria-label="Share this idea"
+                className="flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+              >
                 <Share2 className="w-5 h-5" />
                 Share
               </button>
@@ -412,17 +453,47 @@ const IdeaDetail = () => {
                 </button>
               )}
               {isOwner && (
-                <button
-                  onClick={() => setShowDeleteIdea(!showDeleteIdea)}
-                  className="flex items-center gap-1 px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
-                >
-                  <Trash2 className="w-5 h-5" /> Delete
-                </button>
+                <>
+                  {/* The edit route and CreateIdea's prefill both already existed;
+                      only this link was missing, so an owner had no way to reach
+                      them. Projects have had theirs all along. */}
+                  <button
+                    onClick={() => navigate(`/ideas/${id}/edit`)}
+                    className="flex items-center gap-1 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  >
+                    <Edit3 className="w-5 h-5" /> Edit
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteIdea(!showDeleteIdea)}
+                    className="flex items-center gap-1 px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+                  >
+                    <Trash2 className="w-5 h-5" /> Delete
+                  </button>
+                </>
               )}
               <span className="ml-auto flex items-center gap-1 text-sm text-gray-500">
                 <Eye className="w-4 h-4" /> {idea.views || 0} views
               </span>
             </div>
+
+            {shareFallbackUrl && (
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+                <p className="text-sm text-gray-600 flex-1">Copy this link:</p>
+                <input
+                  readOnly
+                  value={shareFallbackUrl}
+                  onFocus={(e) => e.target.select()}
+                  className="input-field text-xs flex-1 font-mono"
+                  aria-label="Share link"
+                />
+                <button
+                  onClick={() => setShareFallbackUrl('')}
+                  className="btn-outline text-xs px-3 py-1.5"
+                >
+                  Close
+                </button>
+              </div>
+            )}
 
             {showDeleteIdea && isOwner && (
               <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
@@ -634,12 +705,34 @@ const IdeaDetail = () => {
                                   <Pencil className="w-3.5 h-3.5" /> Edit
                                 </button>
                                 <button
-                                  onClick={() => deleteCommentMutation.mutate(comment._id)}
+                                  onClick={() => setConfirmDeleteCommentId(comment._id)}
                                   className="p-2 text-gray-400 hover:text-red-500 rounded-lg active:bg-red-50"
                                   title="Delete comment"
+                                  aria-label="Delete comment"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
+                                {confirmDeleteCommentId === comment._id && (
+                                  <span className="flex items-center gap-1 text-xs text-red-600">
+                                    Delete this comment?
+                                    <button
+                                      onClick={() => {
+                                        setConfirmDeleteCommentId(null);
+                                        deleteCommentMutation.mutate(comment._id);
+                                      }}
+                                      disabled={deleteCommentMutation.isPending}
+                                      className="px-2 py-1 font-medium bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                      {deleteCommentMutation.isPending ? 'Deleting...' : 'Yes, delete'}
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmDeleteCommentId(null)}
+                                      className="px-2 py-1 font-medium bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </span>
+                                )}
                               </>
                             )}
                             {!isOwnComment && isAuthenticated && (
