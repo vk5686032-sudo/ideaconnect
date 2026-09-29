@@ -105,11 +105,46 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 > | 6.3 skills/interests persist as chips | pass — added TypeScript and "open source", both survived reload |
 > | 6.4 education/experience add, remove, required fields | **bug found and fixed** |
 > | 6.4 4-digit year validation | **was a silent dead-end, now fixed** |
-> | 6.5 avatar upload | not run |
+> | 6.5 avatar upload | pass — see below |
 > | 6.6 social links save and render | pass — GitHub and LinkedIn render under Links |
-> | 6.7–6.10 mentorship request / directory / my requests / mentor accepts | not run — the flows are wired (`Profile.jsx:195`, `Mentors.jsx:176`, `Dashboard.jsx:42,53`) but unexercised |
+> | 6.7–6.10 mentorship request / directory / my requests / mentor accepts | pass, with one affordance gap — see below |
 > | 6.11 change password, incl. wrong current password | **bug found and fixed** |
 > | 6.12 logout everywhere revokes other sessions | pass, with a caveat — see below |
+>
+> **6.5 avatar upload — pass.** Selection is what triggers the upload, not the button (the button
+> only opens the picker, and the input's `onChange` calls the mutation). `PUT /users/avatar → 200`,
+> toast "Avatar updated", a new Cloudinary version, it followed to the profile on a client-side
+> navigation, and it survived a full reload. Note the upload fires on file *selection*, so the
+> "Upload new photo" button is decorative — a user who picks a file and then clicks it may think
+> nothing happened the first time. Also: Cloudinary credentials are configured and working, so this
+> path is live.
+>
+> **6.7–6.10 mentorship — pass end to end, with one gap.** Verified across two real accounts:
+>
+> - Directory lists approved mentors with an "Approved Mentor" badge and skill chips (6.8).
+> - Search filters live by name and by skill, and a non-matching search shows "No mentors found —
+>   Try a different search term." rather than an empty page (6.8). Reputation ordering could not be
+>   checked: the seed has exactly one approved mentor.
+> - Requesting calls `window.prompt()` for an optional message, then
+>   `POST /mentors/:id/requests → 201` and "Mentorship request sent!" (6.7).
+> - Asking again returns `400` with "You already have a pending request with this mentor" (6.7).
+> - My Requests shows the request with a **Pending** chip (6.9).
+> - The mentor sees it under Dashboard → Mentorship Requests with Accept / Decline; accepting calls
+>   `POST /mentors/requests/:id/accept → 200`, creates the direct chat, and toasts "Request accepted
+>   — a direct chat was opened" (6.10).
+> - The student's My Requests flips to an **Accepted** chip, and a `mentor-request-accepted`
+>   notification is created whose `actionUrl` is `/chat/<id>`. Clicking it in the UI lands in that
+>   chat (6.10).
+>
+> **The gap:** the accepted row in My Requests has **no "Open Chat" button**, so the only route to
+> the new chat is the notification. The accept handler does not store the chat id on the request
+> record either — it passes it only through the notification's `actionUrl`
+> (`controllers/mentor.controller.js:151-171`) — so the client has nothing to link the button to.
+> Adding the button means persisting `chatId` on the accepted request, then rendering from it.
+>
+> One thing worth knowing for the mobile side: the "Request Mentorship" prompt is a **native
+> `window.prompt()`**, not a styled modal. It works, but it is jarring on a phone and cannot be
+> themed.
 >
 > **1. A 2-digit year silently refused to save.** The schema requires 4-digit years between 1900 and
 > 2100 and enforced it, but nothing rendered the message: the form stayed in edit mode, sent no
