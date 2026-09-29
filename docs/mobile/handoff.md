@@ -57,6 +57,46 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 > | 1b #9 verify-email link | ⏳ not run | — |
 > | Phase 2 / 3 / 6 ACs | ⏳ not run | — |
 >
+> *AC sweep, third pass — Phase 2 (ideas), run against `localhost:5173`.*
+>
+> The web feed paginates with explicit Page X of Y buttons rather than infinite scroll, so AC 2.1's
+> "footer spinner" clause is mobile-only; the web equivalent (Previous disabled on page 1, 10 → 4
+> across two pages) passes.
+>
+> | AC | Result |
+> |---|---|
+> | 2.1 feed loads, pagination | pass (web; mobile infinite scroll still untested) |
+> | 2.2 search debounce + chips reset pagination | **bug found and fixed** — no debounce existed; typing "MediMatch" fired 8 requests, now 1 |
+> | 2.3 drafts hidden from the public feed | pass — absent anonymously, present for the owner |
+> | 2.4 detail: author, badges, description, owner gating | pass — owner-only actions correctly absent on someone else's idea |
+> | 2.5 like + bookmark toggle | pass — both persist and survive reload; unbookmark leaves the like alone |
+> | 2.6 share pill | **FAIL — the Share button has no `onClick` at all** |
+> | 2.7 comments | **partial** — post, edit, like and delete exist; see below |
+> | 2.8 AI Insights gating | pass — empty until `analyzedAt`, then scores/suggestions/challenges/tech render |
+> | 2.9 mentor review | pass — mentor publishes 4★, count 0→1, author is *not* offered the form |
+> | 2.10 owner Edit + Delete | **FAIL — Delete works, Edit is unreachable** |
+> | 2.11 create validation + publish | pass — title/description/category errors all inline, publish lands in the feed |
+> | 2.12 bookmarks screen | pass — listed, and unbookmarking removes it |
+>
+> **Also fixed:** AI Insights showed "Feasibility 75/10". The Mongoose model pins the score to
+> 0–100 and the service prompt asks for 0–100, so the `/10` label was simply wrong; now `/100`.
+>
+> **The three failures share one shape: the feature is built behind the API but no UI reaches it.**
+>
+> 1. **Share is a dead button.** `IdeaDetail.jsx:401` has no `onClick`, and the file contains no
+>    `navigator.share` and no clipboard write. Clicking it does nothing at all.
+> 2. **Owner cannot edit an idea.** The route `ideas/:id/edit` exists (`routes/AppRoutes.jsx:99`)
+>    and `CreateIdea.jsx` prefills from `existingIdea`, but nothing renders a link to it. Projects
+>    *do* have the button (`ProjectDetail.jsx:227`) — it was only ever added there.
+> 3. **Replies are unreachable.** The backend takes `parentId`, the `Comment` model has `parent`,
+>    and the spec says "Comments on an idea, with reply threads" — but the comment block has no
+>    Reply affordance. Two smaller gaps in the same block: deleting a comment has no confirmation
+>    (the idea delete does), and a posted comment is not optimistic — it appeared after the 66 ms
+>    response.
+>
+> Minor: the star-rating buttons and the Share button are icon-only with no `aria-label` or
+> `title`, so they have no accessible name.
+>
 > Bugs found by running the ACs, all three invisible to the unit tests:
 >
 > 1. **The login forms enforced the *signup* minimum.** They shared a literal with the signup
