@@ -15,31 +15,7 @@ import userApi from '../../api/user.api';
 import chatApi from '../../api/chat.api';
 import mentorApi from '../../api/mentor.api';
 
-const profileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  bio: z.string().max(500, 'Bio cannot exceed 500 characters').optional(),
-  skills: z.array(z.string()).optional(),
-  interests: z.array(z.string()).optional(),
-  education: z.array(z.object({
-    institution: z.string().min(1, 'Institution is required'),
-    degree: z.string().optional(),
-    field: z.string().optional(),
-    startYear: z.coerce.number().int().min(1900).max(2100).optional().or(z.literal('')),
-    endYear: z.coerce.number().int().min(1900).max(2100).optional().or(z.literal('')),
-  })).optional(),
-  experience: z.array(z.object({
-    company: z.string().min(1, 'Company is required'),
-    position: z.string().optional(),
-    description: z.string().optional(),
-    current: z.boolean().optional(),
-  })).optional(),
-  socialLinks: z.object({
-    github: z.string().url().optional().or(z.literal('')),
-    linkedin: z.string().url().optional().or(z.literal('')),
-    twitter: z.string().url().optional().or(z.literal('')),
-    portfolio: z.string().url().optional().or(z.literal('')),
-  }).optional(),
-});
+import { profileSchema } from '../../validation/profileSchema';
 
 const Profile = () => {
   const { id } = useParams();
@@ -362,15 +338,31 @@ const Profile = () => {
                       {errors.education?.[index]?.institution && (
                         <p className="text-red-500 text-xs self-center">{errors.education[index].institution.message}</p>
                       )}
-                      <button type="button" onClick={() => removeEducation(index)} className="p-2 text-gray-400 hover:text-red-500">
+                      <button
+                        type="button"
+                        onClick={() => removeEducation(index)}
+                        className="p-2 text-gray-400 hover:text-red-500"
+                        title={`Remove education ${index + 1}`}
+                        aria-label={`Remove education ${index + 1}`}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <input {...register(`education.${index}.degree`)} placeholder="Degree" className="input-field" />
                       <input {...register(`education.${index}.field`)} placeholder="Field of study" className="input-field" />
-                      <input {...register(`education.${index}.startYear`)} placeholder="Start year" type="number" className="input-field" />
-                      <input {...register(`education.${index}.endYear`)} placeholder="End year" type="number" className="input-field" />
+                      <div>
+                        <input {...register(`education.${index}.startYear`)} placeholder="Start year" type="number" className="input-field w-full" />
+                        {errors.education?.[index]?.startYear && (
+                          <p className="text-red-500 text-xs mt-1">{errors.education[index].startYear.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <input {...register(`education.${index}.endYear`)} placeholder="End year" type="number" className="input-field w-full" />
+                        {errors.education?.[index]?.endYear && (
+                          <p className="text-red-500 text-xs mt-1">{errors.education[index].endYear.message}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -393,9 +385,16 @@ const Profile = () => {
                       {errors.experience?.[index]?.company && (
                         <p className="text-red-500 text-xs self-center">{errors.experience[index].company.message}</p>
                       )}
-                      <button type="button" onClick={() => removeExperience(index)} className="p-2 text-gray-400 hover:text-red-500">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                <button
+                  type="button"
+                  onClick={() => removeExperience(index)}
+                  className="p-2 text-gray-400 hover:text-red-500"
+                  title={`Remove experience ${index + 1}`}
+                  aria-label={`Remove experience ${index + 1}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+
                     </div>
                     <input {...register(`experience.${index}.position`)} placeholder="Position" className="input-field" />
                     <textarea {...register(`experience.${index}.description`)} placeholder="Description" rows={2} className="input-field" />
