@@ -94,6 +94,49 @@ Authoritative plan docs live beside this file ([prd.md](./prd.md), [phases.md](.
 > The star-rating, Share and comment-delete buttons were icon-only with no accessible name; all
 > three now carry `aria-label`s.
 >
+> *AC sweep, fourth pass — Phase 6 (profile, mentors, settings), run against `localhost:5173` after
+> `npm run seed`.*
+>
+> | AC | Result |
+> |---|---|
+> | 6.1 profile stats row | **web difference** — stats render on the Dashboard, not the profile. `/users/me/stats` returns them and `Dashboard.jsx:103` shows them; mobile puts them on the profile tab |
+> | 6.1 skills/interests chips, about, joined | pass |
+> | 6.2 edit name → header and sidebar update without reload | pass |
+> | 6.3 skills/interests persist as chips | pass — added TypeScript and "open source", both survived reload |
+> | 6.4 education/experience add, remove, required fields | **bug found and fixed** |
+> | 6.4 4-digit year validation | **was a silent dead-end, now fixed** |
+> | 6.5 avatar upload | not run |
+> | 6.6 social links save and render | pass — GitHub and LinkedIn render under Links |
+> | 6.7–6.10 mentorship request / directory / my requests / mentor accepts | not run — the flows are wired (`Profile.jsx:195`, `Mentors.jsx:176`, `Dashboard.jsx:42,53`) but unexercised |
+> | 6.11 change password, incl. wrong current password | **bug found and fixed** |
+> | 6.12 logout everywhere revokes other sessions | pass, with a caveat — see below |
+>
+> **1. A 2-digit year silently refused to save.** The schema requires 4-digit years between 1900 and
+> 2100 and enforced it, but nothing rendered the message: the form stayed in edit mode, sent no
+> request, and showed no error. `Profile.jsx` rendered an error for exactly four fields (name, bio,
+> education.institution, experience.company) while the schema validated seven more — so every one
+> of those other seven had the same silent-refusal behaviour. Both year fields now render a
+> message, and the schema moved to `src/validation/profileSchema.js` so the rule is testable
+> without the component's auth store and API clients.
+>
+> **2. A wrong current password was treated as an expired session.** `/users/change-password` was
+> missing from `AUTH_ENDPOINTS` in `api/axios.js` — the list whose own comment says it exists for
+> "a 401 that is an expected, user-facing outcome (wrong password…)". So mistyping your current
+> password triggered a token refresh and re-sent the PUT (observed twice), and had the refresh been
+> unrenewable it would have called `hardLogout()` and signed the user out for a typo. Verified after
+> the fix: one `PUT → 401`, zero refresh calls, error still surfaced.
+>
+> **3. 6.12 caveat — "logout everywhere" ends the session at the next refresh, not the next request.**
+> The refresh token is revoked immediately, so a second device cannot get a new access token. An
+> access token issued moments earlier stays valid until it expires, which is inherent to stateless
+> JWTs and is a 15-minute window here. The AC's wording ("the other device's next API call
+> force-signs-out") is therefore slightly optimistic. Killing live access tokens too would mean a
+> token version or denylist checked on every request — a real change, not a tweak.
+>
+> Note the experience `current` checkbox is labelled "I currently work here", and an experience has
+> **no end-date field at all**, so the AC's "currently working hides the end date" has nothing to
+> hide. The flag is stored; it just has no date attached.
+>
 > Bugs found by running the ACs, all three invisible to the unit tests:
 >
 > 1. **The login forms enforced the *signup* minimum.** They shared a literal with the signup
