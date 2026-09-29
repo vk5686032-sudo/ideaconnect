@@ -20,10 +20,12 @@ Current state, short version:
 - Docker builds and has been verified running, not just `compose config`.
 - **Nothing is pushed.** The local branch is ahead of `origin/main` and is held for review.
 - Swept against a real app: Phase 2, 3 and 6 in the browser; Phase 1a auth-core and the Phase 7
-  error/retry work on a device.
-- Biggest remaining gaps: Phase 5 closed-app push and the `ideaconnect://` deep links, both of
-  which need a real EAS build (`eas login`, an Expo project id, and a publicly reachable API URL).
-  Then Phase 7's skeletons/performance pass, and Phases 4/5's remaining device ACs.
+  error/retry work on a device; Phase 5's notification plumbing against the live API and a real
+  socket client.
+- Biggest remaining gaps: **the Phase 5 device pass** (short — the phone dropped out mid-sweep),
+  then the `ideaconnect://` deep links and closed-app push, all of which need a real EAS build
+  (`eas login`, an Expo project id, and a publicly reachable API URL). Then Phase 7's
+  skeletons/performance pass.
 
 > **2026-09-27 note (web platform).** The web/backend were audited and fixed in the same session
 > that reconciled this folder. Highlights relevant to mobile: the backend now serves a **complete
@@ -549,17 +551,64 @@ Backend contracts used: PUT /users/profile (whitelisted fields, arrays replaced 
 
 MEMBER-DUPE ROOT CAUSE (final): the Aug-26 accepts at 08:22/08:24/08:53 ran through a STALE backend process predating the sender-based fix — each pushed the accepting owner; the 08:55 accept on the restarted process correctly added james. Permanent invariant added in `models/Project.js`: `pre('save')` + `pre('findOneAndUpdate')` hooks de-dupe members by user id (findOneAndUpdate strips `$push.members` when target already member) — no code path can persist dupes even from stale processes. DB re-cleaned (check → owner+james). Mobile renders deduped `uniqueMembers` w/ index-suffixed keys. NOTE for testing: after ANY backend file change confirm nodemon actually restarted (`npm run dev`) or restart manually before re-testing accept flows.
 
-## ⏳ Phase 5 — pending device ACs
+## 🟡 Phase 5 — ACs 1–8 verified; device pass still owed, #9 blocked
 
-1. Home header bell shows red badge with unread count on login (seeded notifications exist)
-2. Like an idea from device A → device B (open, any tab): toast banner pops + bell badge increments live
-3. Bell → Notifications screen lists rows w/ sender avatar, type icon, unread highlight; infinite scroll page 2 when >20
-4. Tap a like/comment notification → mark-read + deep-links into the correct Idea detail; project/task ones → Project detail; mentor-accept → Chat room
-5. Unread row loses highlight after tap; badge decrements immediately (optimistic) and stays correct after refetch
-6. "Mark all read" clears highlight + badge instantly
-7. New chat message does NOT create a notification row (chat uses its own path) — verify no dupes between Chat badge and bell
-8. Logout → login: unread count refetches correctly
-9. [Phase 7] Closed-app Expo push — deferred, requires EAS build + EXPO_PUBLIC_EAS_PROJECT_ID
+**Read this before trusting the checkmarks.** ACs 1–8 were verified against a
+*running* stack — the live API, a real Socket.io client on the exact channel
+`SocketNotificationBridge` subscribes to, and the web client for the client-side
+bits. They were **not** verified on the phone: the device disconnected partway
+through and did not come back. So the notification *plumbing* is proven, but
+whether the mobile toast/row rendering looks and behaves right on screen is
+still unconfirmed. The device pass is a short list, not a re-derivation.
+
+1. **Pass (web).** Bell shows the unread count on login: 25 unread server-side
+   rendered as `9+`, i.e. the badge caps its display rather than printing 25.
+2. **Pass (server + realtime).** James likes Priya's idea while a socket sits
+   joined to `user:<priya>`: exactly one `notification` event arrives, typed
+   `like`, and the unread count goes 2 → 3. That is the same event the mobile
+   bridge listens for, so the phone receives it by construction — but the
+   *toast* has not been seen on device.
+3. **Pass (server).** Page 1 and page 2 with `limit=10` over 28 rows: both full,
+   zero id overlap, ids unique within each page, newest-first, and every row on
+   both pages carries an `actionUrl`. The mobile-side dedupe that pairs with
+   this is `flattenNotificationPages`, already unit-tested.
+4. **Pass (server), after a fix.** Like and comment rows now carry a real
+   `actionUrl`, and the comment anchor matches a comment that is actually on the
+   linked idea. This did **not** work before — see the seed fix below. Tapping a
+   notification to navigate is still unverified on the phone.
+5. **Pass (server).** Marking one read decrements the count by exactly 1, and
+   the row is still read after a fresh fetch. The *optimistic* badge update and
+   highlight clearing are mobile-side and unverified.
+6. **Pass (server).** Mark-all-read takes the count to 0 and leaves no unread
+   row.
+7. **Pass (server).** A chat message sent over the socket (`message:send`)
+   creates no notification row and leaves the unread count untouched, which is
+   the no-dupe guarantee. Confirmed by count before/after.
+8. **Pass (web).** With the server count driven to 0 and the client still
+   showing `9+`, a fresh sign-in refetched `unread-count` and cleared the badge
+   instead of reusing the stale value.
+9. **Blocked.** Closed-app Expo push needs an EAS build and
+   `EXPO_PUBLIC_EAS_PROJECT_ID`.
+
+### The bug AC 4 found
+
+`resolveActionRoute` returns null for an empty `actionUrl`, and the app then
+falls back to the notifications screen. Production controllers have always set
+`actionUrl`; the **seed** never did, so the demo data could not deep-link and the
+AC was untestable. Fixed in `backend/src/seed.js`. The comment row had a second
+layer on top: its `#comment-<id>` anchor pointed at a comment belonging to a
+*different* idea, so even after adding the link it would have scrolled to
+nothing. The seed now derives titles/messages from the sender the way the
+controllers do, and picks a comment that really sits on the linked idea.
+
+### Device pass, when the phone is back
+
+Short list, all of it read-only-ish: open the app and check the bell badge
+number; have a second account like one of your ideas and watch the toast arrive
+and the badge tick up; open Notifications and look at row avatars, type icons and
+unread highlighting; tap a like row and confirm it lands on that idea and marks
+read; tap Mark all read; open a chat and confirm no notification row appears.
+
 
 ## Phase 5 — what was built
 
