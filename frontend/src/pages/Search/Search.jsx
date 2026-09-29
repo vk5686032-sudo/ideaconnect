@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Search as SearchIcon, Lightbulb, FolderKanban, Users,
 } from 'lucide-react';
 import api from '../../api/axios';
+import useDebounce from '../../hooks/useDebounce';
 
 const fetchSearch = async (query, type) => {
   if (!query) return [];
@@ -41,13 +42,9 @@ const fetchSearch = async (query, type) => {
 const Search = () => {
   const [query, setQuery] = useState('');
   const [type, setType] = useState('all');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 300);
-    return () => clearTimeout(timer);
-  }, [query]);
+  // Was a hand-rolled useState + setTimeout; now shares hooks/useDebounce.js
+  // with the Ideas and Projects feeds.
+  const debouncedQuery = useDebounce(query);
 
   const { data: results, isFetching } = useQuery({
     queryKey: ['search', debouncedQuery, type],

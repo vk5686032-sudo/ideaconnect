@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, FolderKanban, Users } from 'lucide-react';
 import projectApi from '../../api/project.api';
 import { PROJECT_STATUSES } from '../../utils/constants';
+import useDebounce from '../../hooks/useDebounce';
 
 const Projects = () => {
   const [filters, setFilters] = useState({
@@ -12,9 +13,12 @@ const Projects = () => {
     page: 1,
   });
 
+  // Same as Ideas.jsx: the box stays responsive, the query waits.
+  const debouncedSearch = useDebounce(filters.search);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['projects', filters],
-    queryFn: () => projectApi.getAll(filters),
+    queryKey: ['projects', { ...filters, search: debouncedSearch }],
+    queryFn: () => projectApi.getAll({ ...filters, search: debouncedSearch }),
     keepPreviousData: true,
   });
 

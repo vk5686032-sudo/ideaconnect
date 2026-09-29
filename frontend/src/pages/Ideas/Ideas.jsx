@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Star, MessageSquare, Eye } from 'lucide-react';
 import ideaApi from '../../api/idea.api';
 import { CATEGORIES, IDEA_STATUSES, SORT_OPTIONS } from '../../utils/constants';
+import useDebounce from '../../hooks/useDebounce';
 
 const Ideas = () => {
   const [filters, setFilters] = useState({
@@ -14,9 +15,14 @@ const Ideas = () => {
     page: 1,
   });
 
+  // The text box updates filters.search immediately so typing stays responsive,
+  // but the query reads the debounced copy — otherwise every prefix ("M", "Me",
+  // "Med", ...) becomes its own request.
+  const debouncedSearch = useDebounce(filters.search);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['ideas', filters],
-    queryFn: () => ideaApi.getAll(filters),
+    queryKey: ['ideas', { ...filters, search: debouncedSearch }],
+    queryFn: () => ideaApi.getAll({ ...filters, search: debouncedSearch }),
     keepPreviousData: true,
   });
 
