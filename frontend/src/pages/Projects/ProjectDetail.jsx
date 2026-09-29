@@ -207,6 +207,7 @@ const ProjectDetail = () => {
 
   const isOwner = user?._id === project.owner?._id;
   const isMember = project.members?.some((m) => m.user?._id === user?._id) || isOwner;
+  const milestonesCompleted = (project.milestones || []).filter((m) => m.completed).length;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -296,9 +297,16 @@ const ProjectDetail = () => {
             {/* Milestones */}
             <div className="mt-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Flag className="w-4 h-4 text-primary-600" /> Milestones
-                </h3>
+        <h3 className="font-semibold flex items-center gap-2">
+          <Flag className="w-4 h-4 text-primary-600" /> Milestones
+          {/* The AC expects a count that moves as milestones are ticked off, and
+              the sibling Tasks section already carries one. Without it the
+              strikethrough is the only feedback that anything changed. */}
+          <span className="text-sm text-gray-400 font-normal">
+            ({milestonesCompleted}/{project.milestones?.length || 0} done)
+          </span>
+        </h3>
+
                 {isOwner && (
                   <button
                     onClick={() => setShowMilestoneForm(!showMilestoneForm)}
