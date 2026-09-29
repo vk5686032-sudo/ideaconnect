@@ -7,12 +7,12 @@ function ToastCard({
   tone,
   text1,
   text2,
-  onAction,
+  onPress,
 }: {
   tone: 'success' | 'error' | 'info';
   text1?: string;
   text2?: string;
-  onAction?: () => void;
+  onPress?: () => void;
 }) {
   const icon =
     tone === 'success' ? (
@@ -38,19 +38,19 @@ function ToastCard({
           </Text>
         ) : null}
       </View>
-      {onAction ? (
+      {onPress ? (
         <ChevronRight size={18} color="#9ca3af" strokeWidth={2} />
       ) : null}
     </View>
   );
 
-  if (!onAction) return card;
+  if (!onPress) return card;
 
   return (
     <Pressable
       onPress={() => {
         Toast.hide();
-        onAction();
+        onPress();
       }}
       className="active:opacity-80">
       {card}
@@ -64,8 +64,6 @@ export const toastConfig: ToastConfig = {
   info: (props) => <ToastCard tone="info" {...props} />,
 };
 
-export function showToast(
-  params: ToastShowParams & { onAction?: () => void }
-): void {
+export function showToast(params: ToastShowParams): void {
   Toast.show(params);
 }

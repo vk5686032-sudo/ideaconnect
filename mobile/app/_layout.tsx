@@ -75,7 +75,7 @@ function SocketNotificationBridge() {
         type: 'info',
         text1: notification.title,
         text2: notification.message,
-        onAction: () => {
+        onPress: () => {
           if (!notification.read) {
             markRead.mutate(notification._id);
           }
