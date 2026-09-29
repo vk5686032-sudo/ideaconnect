@@ -281,15 +281,18 @@ async function seed() {
     { ideaIdx: 2, authorIdx: 0, text: 'The multilingual aspect is crucial. Well thought out.' },
     { ideaIdx: 4, authorIdx: 3, text: 'Love the social accountability angle!' },
   ];
+  const comments = [];
   for (const c of commentData) {
     if (DRY_RUN) {
+      comments.push({ _id: new mongoose.Types.ObjectId(), idea: ideas[c.ideaIdx]._id });
       console.log(`   - ${c.text.slice(0, 50)}...`);
     } else {
-      await Comment.create({
+      const doc = await Comment.create({
         content: c.text,
         author: users[c.authorIdx]._id,
         idea: ideas[c.ideaIdx]._id,
       });
+      comments.push(doc);
       await Idea.findByIdAndUpdate(ideas[c.ideaIdx]._id, { $inc: { commentsCount: 1 } });
       console.log(`   - ${c.text.slice(0, 50)}...`);
     }
@@ -355,22 +358,42 @@ async function seed() {
   // ── Notifications ──────────────────────────────
   console.log('Creating notifications...');
   const notifData = [
-    { recipientIdx: 2, senderIdx: 3, type: 'like', title: 'New like on your idea', msg: 'James Okafor liked your idea' },
-    { recipientIdx: 2, senderIdx: 1, type: 'comment', title: 'New comment on your idea', msg: 'Marcus Webb commented on your idea' },
-    { recipientIdx: 0, senderIdx: 2, type: 'like', title: 'New like on your idea', msg: 'Priya Nair liked your idea' },
+    { recipientIdx: 2, senderIdx: 3, type: 'like', ideaIdx: 2 },
+    // commentData[3] is the one comment that actually sits on ideas[2] (and its
+    // author is users[0]), so the sender and the #comment- anchor both resolve
+    // to something real rather than pointing at a comment on another idea.
+    { recipientIdx: 2, senderIdx: 0, type: 'comment', ideaIdx: 2, commentIdx: 3 },
+    { recipientIdx: 0, senderIdx: 2, type: 'like', ideaIdx: 0 },
   ];
   for (const n of notifData) {
+    // Every seeded notification must carry a real actionUrl. The mobile app
+    // resolves actionUrl to a screen (see resolveActionRoute) and silently
+    // falls back to the notifications list when it is missing, so a seed
+    // without one made "tap the notification" untestable and un-demoable --
+    // the production controllers always set it, only the fixture did not.
+    const idea = ideas[n.ideaIdx];
+    const comment = n.commentIdx === undefined ? null : comments[n.commentIdx];
+    const actionUrl = comment
+      ? `/ideas/${idea._id}#comment-${comment._id}`
+      : `/ideas/${idea._id}`;
+    const title =
+      n.type === 'like' ? 'New like on your idea' : 'New comment on your idea';
+    const msg = comment
+      ? `${users[n.senderIdx].name} commented on your idea`
+      : `${users[n.senderIdx].name} liked your idea`;
+
     if (DRY_RUN) {
-      console.log(`   - ${n.msg} → ${users[n.recipientIdx].name}`);
+      console.log(`   - ${msg} → ${users[n.recipientIdx].name} (${actionUrl})`);
     } else {
       await Notification.create({
         recipient: users[n.recipientIdx]._id,
         sender: users[n.senderIdx]._id,
         type: n.type,
-        title: n.title,
-        message: n.msg,
+        title,
+        message: msg,
+        actionUrl,
       });
-      console.log(`   - ${n.msg} → ${users[n.recipientIdx].name}`);
+      console.log(`   - ${msg} → ${users[n.recipientIdx].name} (${actionUrl})`);
     }
   }
   console.log('');
