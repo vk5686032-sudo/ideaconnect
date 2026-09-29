@@ -13,6 +13,7 @@ import { MessageSquare } from 'lucide-react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { useChats } from '@/hooks/queries/useChats';
 import { useCurrentUser } from '@/hooks/useAuth';
 import { usePresenceStore } from '@/store/presenceSlice';
@@ -33,10 +34,10 @@ function resolveOtherParticipant(
 }
 
 function previewOf(message: ChatMessage | string | null | undefined): string {
-  if (!message || typeof message === 'string') return 'Say hello 👋';
+  if (!message || typeof message === 'string') return 'Say hello ðŸ‘‹';
   if (message.isDeleted) return 'Message deleted';
   if ((message.attachments?.length ?? 0) > 0 && !message.content) {
-    return '📎 Attachment';
+    return 'ðŸ“Ž Attachment';
   }
   return message.content ?? '';
 }
@@ -161,6 +162,12 @@ export default function ChatScreen() {
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#6366f1" />
             </View>
+          ) : chatsQuery.isError ? (
+            <ErrorState
+              title="Couldn't load conversations"
+              onRetry={() => void chatsQuery.refetch()}
+              retrying={chatsQuery.isFetching}
+            />
           ) : (
             <EmptyState
               icon={MessageSquare}

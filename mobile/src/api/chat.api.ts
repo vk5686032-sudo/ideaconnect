@@ -57,7 +57,7 @@ export const chatApi = {
     return api.post<ApiSuccess<ChatMessage>>(
       `/chats/${chatId}/attachments`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }
     );
   },
 };

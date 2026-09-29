@@ -18,6 +18,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { Input } from '@/components/Input';
 import { PromptModal } from '@/components/PromptModal';
 import { chatApi } from '@/api/chat.api';
@@ -120,7 +121,7 @@ export default function MentorsScreen() {
             <Input
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder="Search mentors by name or skill…"
+              placeholder="Search mentors by name or skillâ€¦"
               returnKeyType="search"
             />
           </View>
@@ -143,6 +144,12 @@ export default function MentorsScreen() {
                 <View className="items-center py-16">
                   <ActivityIndicator size="large" color="#6366f1" />
                 </View>
+              ) : mentorsQuery.isError ? (
+                <ErrorState
+                  title="Couldn't load mentors"
+                  onRetry={() => void mentorsQuery.refetch()}
+                  retrying={mentorsQuery.isFetching}
+                />
               ) : (
                 <EmptyState
                   icon={Sparkles}
@@ -190,7 +197,7 @@ export default function MentorsScreen() {
                         <Text
                           numberOfLines={1}
                           className="mt-1 font-sans text-[11px] text-primary-600 dark:text-primary-400">
-                          {item.skills?.slice(0, 4).join(' · ')}
+                          {item.skills?.slice(0, 4).join(' Â· ')}
                         </Text>
                       ) : null}
                     </View>
@@ -199,7 +206,7 @@ export default function MentorsScreen() {
                 <Button
                   title={
                     sendRequest.isPending && requestTarget?._id === item._id
-                      ? 'Sending…'
+                      ? 'Sendingâ€¦'
                       : 'Request Mentorship'
                   }
                   variant="soft"
@@ -229,6 +236,12 @@ export default function MentorsScreen() {
               <View className="items-center py-16">
                 <ActivityIndicator size="large" color="#6366f1" />
               </View>
+            ) : requestsQuery.isError ? (
+              <ErrorState
+                title="Couldn't load your requests"
+                onRetry={() => void requestsQuery.refetch()}
+                retrying={requestsQuery.isFetching}
+              />
             ) : (
               <EmptyState
                 icon={Sparkles}
@@ -274,7 +287,7 @@ export default function MentorsScreen() {
                       (typeof item.recipient === 'string'
                         ? item.recipient
                         : item.recipient._id)
-                        ? 'Opening…'
+                        ? 'Openingâ€¦'
                         : 'Open Chat'
                     }
                     variant="soft"

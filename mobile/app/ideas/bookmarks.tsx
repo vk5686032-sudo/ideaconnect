@@ -10,6 +10,7 @@ import { useRouter, Stack } from 'expo-router';
 import { Bookmark } from 'lucide-react-native';
 
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { IdeaCard } from '@/components/IdeaCard';
 import { useMyBookmarks } from '@/hooks/queries/useIdeas';
 import type { Idea } from '@/types/models';
@@ -54,6 +55,12 @@ export default function BookmarksScreen() {
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#6366f1" />
             </View>
+          ) : query.isError ? (
+            <ErrorState
+              title="Couldn't load bookmarks"
+              onRetry={() => void query.refetch()}
+              retrying={query.isFetching}
+            />
           ) : (
             <EmptyState
               icon={Bookmark}

@@ -23,6 +23,7 @@ import Toast from 'react-native-toast-message';
 
 import { Avatar } from '@/components/Avatar';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -100,7 +101,7 @@ function NotificationRow({
         </Text>
         {!item.read ? (
           <Text className="mt-1 font-sans-medium text-[10px] uppercase tracking-wide text-primary-600 dark:text-primary-400">
-            {titleCase(item.type)} · new
+            {titleCase(item.type)} Â· new
           </Text>
         ) : null}
       </View>
@@ -203,6 +204,12 @@ export default function NotificationsScreen() {
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#6366f1" />
             </View>
+          ) : query.isError ? (
+            <ErrorState
+              title="Couldn't load notifications"
+              onRetry={() => void query.refetch()}
+              retrying={query.isFetching}
+            />
           ) : (
             <EmptyState
               icon={Bell}

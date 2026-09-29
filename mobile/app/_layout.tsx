@@ -41,6 +41,7 @@ import {
   onSocketEvent,
 } from '@/services/socket';
 import { registerPushToken } from '@/services/pushTokens';
+import { ErrorState } from '@/components/ErrorState';
 import {
   notificationKeys,
   prependNotification,
@@ -138,6 +139,7 @@ export default function RootLayout() {
   });
 
   const status = useAuthStore((state) => state.status);
+  const bootError = useAuthStore((state) => state.bootError);
   const hydrate = useAuthStore((state) => state.hydrate);
 
   useEffect(() => {
@@ -153,6 +155,12 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded, status]);
+
+  useEffect(() => {
+    if (loaded && bootError) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, bootError]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -191,6 +199,22 @@ export default function RootLayout() {
 
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+
+  if (loaded && bootError) {
+    // Reached the network, got nothing back. Offering a retry is the whole
+    // point: this used to render null over a splash screen that never went
+    // away, leaving force-quit as the only way out.
+    return (
+      <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-[#0b0f19]">
+        <ErrorState
+          title="Can't reach IdeaConnect"
+          message="Check your connection, then try again."
+          onRetry={() => void hydrate()}
+          retrying={status === 'hydrating' && !bootError}
+        />
+      </View>
+    );
+  }
 
   if (!loaded || status === 'idle' || status === 'hydrating') {
     return null;

@@ -13,6 +13,7 @@ import { FolderKanban, Plus, Search } from 'lucide-react-native';
 
 import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { Input } from '@/components/Input';
 import { ProjectCard } from '@/components/ProjectCard';
 import { useProjectsFeed } from '@/hooks/queries/useProjects';
@@ -93,7 +94,7 @@ export default function ProjectsScreen() {
             <Input
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder="Search projects by title or technology…"
+              placeholder="Search projects by title or technologyâ€¦"
               leftIcon={<Search size={18} color="#9ca3af" strokeWidth={2} />}
               returnKeyType="search"
             />
@@ -123,6 +124,12 @@ export default function ProjectsScreen() {
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#6366f1" />
             </View>
+          ) : feed.isError ? (
+            <ErrorState
+              title="Couldn't load projects"
+              onRetry={() => void feed.refetch()}
+              retrying={feed.isFetching}
+            />
           ) : (
             <EmptyState
               icon={FolderKanban}

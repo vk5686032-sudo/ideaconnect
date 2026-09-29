@@ -6,6 +6,7 @@ import { ListTodo } from 'lucide-react-native';
 import { Badge } from '@/components/Badge';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { StatusPickerModal } from '@/components/StatusPickerModal';
 import { projectKeys, useMyTasks, useUpdateTask } from '@/hooks/queries/useProjects';
 import { useQueryClient } from '@tanstack/react-query';
@@ -70,13 +71,19 @@ export default function HomeScreen() {
           <View className="items-center py-10">
             <ActivityIndicator size="large" color="#6366f1" />
           </View>
+        ) : myTasks.isError ? (
+          <ErrorState
+            title="Couldn't load your tasks"
+            onRetry={() => void myTasks.refetch()}
+            retrying={myTasks.isFetching}
+          />
         ) : openTasks.length === 0 ? (
           <EmptyState
             icon={ListTodo}
             title="No open tasks"
             message={
               myTasks.data?.data.length
-                ? 'All caught up — nice work!'
+                ? 'All caught up â€” nice work!'
                 : 'Tasks assigned to you across your projects will appear here.'
             }
           />

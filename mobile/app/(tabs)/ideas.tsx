@@ -14,6 +14,7 @@ import { Lightbulb, Plus, Search } from 'lucide-react-native';
 
 import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { Input } from '@/components/Input';
 import { IdeaCard } from '@/components/IdeaCard';
 import { useIdeasFeed } from '@/hooks/queries/useIdeas';
@@ -101,7 +102,7 @@ export default function IdeasScreen() {
             <Input
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder="Search ideas by title, description, tags…"
+              placeholder="Search ideas by title, description, tagsâ€¦"
               leftIcon={<Search size={18} color="#9ca3af" strokeWidth={2} />}
               returnKeyType="search"
             />
@@ -179,6 +180,12 @@ export default function IdeasScreen() {
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#6366f1" />
             </View>
+          ) : feed.isError ? (
+            <ErrorState
+              title="Couldn't load ideas"
+              onRetry={() => void feed.refetch()}
+              retrying={feed.isFetching}
+            />
           ) : (
             <EmptyState
               icon={Lightbulb}

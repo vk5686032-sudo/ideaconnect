@@ -32,7 +32,7 @@ export const userApi = {
     return api.put<ApiSuccess<{ avatar: User['avatar'] }>>(
       '/users/avatar',
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }
     );
   },
 

@@ -28,11 +28,19 @@ export function setAuthClientListener(listener: AuthClientListener | null): void
   authClientListener = listener;
 }
 
+export const REQUEST_TIMEOUT_MS = 20000;
+
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  // axios defaults to no timeout at all, so any request whose packets are
+  // silently dropped rather than refused (a firewall DROP, a captive portal,
+  // wifi flapping) hangs forever. On cold start that pinned the app to the
+  // splash screen with no message and no way out -- killing the app was the
+  // only escape. Uploads pass their own, longer timeout.
+  timeout: REQUEST_TIMEOUT_MS,
 });
 
 api.interceptors.request.use(
