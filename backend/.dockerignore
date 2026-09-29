@@ -3,7 +3,11 @@ npm-debug.log
 .env
 .env.*
 !.env.example
-uploads
+# Must be **/uploads, not a bare 'uploads'. A bare pattern only matches a
+# top-level directory, and the real path is src/uploads/chat-files - so dev
+# chat attachments (including multi-MB videos) were being COPY'd into the
+# image by 'COPY src ./src' and seeding the named volume on first run.
+**/uploads
 coverage
 .git
 .gitignore

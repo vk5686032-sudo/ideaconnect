@@ -8,4 +8,8 @@ npm-debug.log
 .gitignore
 Dockerfile
 .dockerignore
-nginx.conf
+# NOTE: nginx.conf must NOT be listed here. The Dockerfile copies it into the
+# image, so excluding it from the build context made `docker compose build`
+# fail with 'failed to compute cache key ... "/nginx.conf": not found'.
+# Excluding Dockerfile and .dockerignore above is fine - Docker reads those
+# separately and they never need to be inside the context.
