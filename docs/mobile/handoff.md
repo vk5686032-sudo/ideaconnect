@@ -15,17 +15,15 @@ If you are picking this up cold, in this order:
 
 Current state, short version:
 
-- Gate green: **backend 69, frontend 58, mobile 36, OpenAPI 117/117**, plus frontend
+- Gate green: **backend 69, frontend 58, mobile 39, OpenAPI 117/117**, plus frontend
   lint/build and mobile typecheck/lint.
 - Docker builds and has been verified running, not just `compose config`.
 - **Nothing is pushed.** The local branch is ahead of `origin/main` and is held for review.
-- Swept against a real app: Phase 2, 3 and 6 in the browser; Phase 1a auth-core and the Phase 7
-  error/retry work on a device; Phase 5's notification plumbing against the live API and a real
-  socket client.
-- Biggest remaining gaps: **the Phase 5 device pass** (short — the phone dropped out mid-sweep),
-  then the `ideaconnect://` deep links and closed-app push, all of which need a real EAS build
-  (`eas login`, an Expo project id, and a publicly reachable API URL). Then Phase 7's
-  skeletons/performance pass.
+- Swept against a real app: Phase 2, 3 and 6 in the browser; Phase 1a auth-core, the Phase 7
+  error/retry work and all of Phase 5 on a device.
+- The remaining gaps are all one thing: the `ideaconnect://` deep links and closed-app
+  push both need a real EAS build (`eas login`, an Expo project id, and a publicly
+  reachable API URL). After that, Phase 7's loading skeletons and performance pass.
 
 > **2026-09-27 note (web platform).** The web/backend were audited and fixed in the same session
 > that reconciled this folder. Highlights relevant to mobile: the backend now serves a **complete
@@ -551,46 +549,65 @@ Backend contracts used: PUT /users/profile (whitelisted fields, arrays replaced 
 
 MEMBER-DUPE ROOT CAUSE (final): the Aug-26 accepts at 08:22/08:24/08:53 ran through a STALE backend process predating the sender-based fix — each pushed the accepting owner; the 08:55 accept on the restarted process correctly added james. Permanent invariant added in `models/Project.js`: `pre('save')` + `pre('findOneAndUpdate')` hooks de-dupe members by user id (findOneAndUpdate strips `$push.members` when target already member) — no code path can persist dupes even from stale processes. DB re-cleaned (check → owner+james). Mobile renders deduped `uniqueMembers` w/ index-suffixed keys. NOTE for testing: after ANY backend file change confirm nodemon actually restarted (`npm run dev`) or restart manually before re-testing accept flows.
 
-## 🟡 Phase 5 — ACs 1–8 verified; device pass still owed, #9 blocked
+## ✅ Phase 5 — ACs 1–8 verified on the device; #9 blocked on EAS
 
-**Read this before trusting the checkmarks.** ACs 1–8 were verified against a
-*running* stack — the live API, a real Socket.io client on the exact channel
-`SocketNotificationBridge` subscribes to, and the web client for the client-side
-bits. They were **not** verified on the phone: the device disconnected partway
-through and did not come back. So the notification *plumbing* is proven, but
-whether the mobile toast/row rendering looks and behaves right on screen is
-still unconfirmed. The device pass is a short list, not a re-derivation.
+The server half was verified first (live API + a real Socket.io client on the
+channel the app subscribes to), then every AC was re-run on the phone. The
+device pass is what found the one real bug (see below). Dark mode was on
+throughout and the screens render correctly in it.
 
-1. **Pass (web).** Bell shows the unread count on login: 25 unread server-side
-   rendered as `9+`, i.e. the badge caps its display rather than printing 25.
-2. **Pass (server + realtime).** James likes Priya's idea while a socket sits
-   joined to `user:<priya>`: exactly one `notification` event arrives, typed
-   `like`, and the unread count goes 2 → 3. That is the same event the mobile
-   bridge listens for, so the phone receives it by construction — but the
-   *toast* has not been seen on device.
-3. **Pass (server).** Page 1 and page 2 with `limit=10` over 28 rows: both full,
-   zero id overlap, ids unique within each page, newest-first, and every row on
-   both pages carries an `actionUrl`. The mobile-side dedupe that pairs with
-   this is `flattenNotificationPages`, already unit-tested.
-4. **Pass (server), after a fix.** Like and comment rows now carry a real
-   `actionUrl`, and the comment anchor matches a comment that is actually on the
-   linked idea. This did **not** work before — see the seed fix below. Tapping a
-   notification to navigate is still unverified on the phone.
-5. **Pass (server).** Marking one read decrements the count by exactly 1, and
-   the row is still read after a fresh fetch. The *optimistic* badge update and
-   highlight clearing are mobile-side and unverified.
-6. **Pass (server).** Mark-all-read takes the count to 0 and leaves no unread
-   row.
-7. **Pass (server).** A chat message sent over the socket (`message:send`)
-   creates no notification row and leaves the unread count untouched, which is
-   the no-dupe guarantee. Confirmed by count before/after.
-8. **Pass (web).** With the server count driven to 0 and the client still
-   showing `9+`, a fresh sign-in refetched `unread-count` and cleared the badge
-   instead of reusing the stale value.
+1. **Pass.** Bell shows the count on login: nothing at 0 unread, then `1`→`2`→`8`
+   as notifications arrived, and the badge disappears again after mark-all-read.
+2. **Pass.** Another account liking an idea pops the banner live — *"New like on
+   your idea / James Okafor liked your idea "MediMatch…""* with a heart icon —
+   and the badge increments without a refetch.
+3. **Pass.** Rows carry a sender avatar ("JO"), a type icon (heart), a relative
+   timestamp, a `LIKE · NEW` badge, and a visibly tinted background while unread
+   against a flat one once read.
+4. **Pass, after a fix.** Tapping a row marks it read and opens the right idea.
+   Tapping the *banner* did nothing at all before the fix — see the bug below.
+5. **Pass.** Tap took unread 8→7, the row's tint and `NEW` badge cleared, and both
+   survived navigating away and back.
+6. **Pass.** Mark all read took 7→0, cleared every `NEW` badge, and the header
+   dropped its "N unread" line and button.
+7. **Pass.** A message sent from the device's own composer created **no**
+   notification row (total stayed 37) and left the bell badge absent, so chat
+   and the bell do not double up.
+8. **Pass.** With the server count driven to 0 while the client still showed
+   `9+`, a fresh sign-in refetched and cleared the badge rather than reusing it.
 9. **Blocked.** Closed-app Expo push needs an EAS build and
    `EXPO_PUBLIC_EAS_PROJECT_ID`.
 
-### The bug AC 4 found
+### The bug the device pass found
+
+**The in-app banner was a dead tap.** It rendered correctly — icon, title, body,
+dark mode — and did nothing when pressed. `ToastCard` was built on `onAction`,
+but react-native-toast-message v2 renamed that prop to `onPress` and dropped
+`onAction` entirely; the string appears nowhere in the installed package. So the
+library never passed it through, `ToastCard` always saw `undefined`, bailed out
+of the `Pressable` branch, and returned a plain `View`. The chevron affordance
+was missing as well, so nothing looked tappable. Both "tap the banner" paths
+were unreachable. Fixed to `onPress`; the chevron now renders and one tap
+navigates and marks read.
+
+Worth knowing if you write more toasts: `fireEvent.press` in
+@testing-library/react-native is a **silent no-op** when it finds no pressable
+ancestor. A test asserting only "the handler was called" passes against a
+completely dead component. Assert on the responder wiring too.
+
+### Two things that will bite you when testing by hand
+
+- **The backend caps concurrent sessions at 5.** `auth.controller.js` appends a
+  refresh token per login and `shift()`s the oldest past five. Logging in from
+  a script or a second client repeatedly will therefore *evict the phone's
+  session* — it refreshes, gets a 401, and drops to the login screen looking
+  like a bug. It is not. Do API-side work as a different user, or re-login the
+  phone afterwards.
+- **`ping` failing from the phone means nothing.** The host firewall drops ICMP,
+  so a device cannot ping the dev machine even while every port is open. Test
+  reachability with `adb shell "echo | nc -w 5 <host> 5000"`, not `ping`.
+
+### The seed bug AC 4 exposed
 
 `resolveActionRoute` returns null for an empty `actionUrl`, and the app then
 falls back to the notifications screen. Production controllers have always set
@@ -601,13 +618,14 @@ layer on top: its `#comment-<id>` anchor pointed at a comment belonging to a
 nothing. The seed now derives titles/messages from the sender the way the
 controllers do, and picks a comment that really sits on the linked idea.
 
+Pagination was verified server-side separately: over 28 rows, pages 1 and 2 at
+`limit=10` were both full with zero id overlap, ids unique within each page,
+newest-first, and every row carrying an `actionUrl`. The mobile-side dedupe that
+pairs with it is `flattenNotificationPages`, already unit-tested.
+
 ### Device pass, when the phone is back
 
-Short list, all of it read-only-ish: open the app and check the bell badge
-number; have a second account like one of your ideas and watch the toast arrive
-and the badge tick up; open Notifications and look at row avatars, type icons and
-unread highlighting; tap a like row and confirm it lands on that idea and marks
-read; tap Mark all read; open a chat and confirm no notification row appears.
+Done — see above. Nothing outstanding for Phase 5 except the EAS build.
 
 
 ## Phase 5 — what was built

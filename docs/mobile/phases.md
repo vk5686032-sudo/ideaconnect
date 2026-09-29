@@ -76,11 +76,11 @@ which is the authoritative progress log. This file is the plan of record.
 - [x] Foreground handler → in-app banner; tap → deep link
 - [ ] Closed-app push delivery — **blocked on an EAS build** (Phase 7)
 
-**AC:** 8 of 9 verified against a running stack (live API + a real socket on the
-channel the app subscribes to, + the web client for the client-side bits). The
-phone pass — toast, row rendering, tap-to-navigate — is still owed; it
-disconnected mid-sweep. Closed-app delivery is blocked on an EAS build.
-See handoff.md for the per-AC breakdown.
+**AC:** 8 of 9 verified on the device (real backend, live socket, dark mode). The device
+pass found and fixed a real bug: the in-app notification banner was built on
+`onAction`, which react-native-toast-message v2 renamed to `onPress`, so the
+banner rendered fine and did nothing when tapped. Closed-app delivery is still
+blocked on an EAS build. See handoff.md for the per-AC breakdown.
 
 ## Phase 6 — Profile, Mentors & Settings — ✅ code done · ✅ ACs swept (browser)
 - [x] Own profile tab: stats, skills/interests, edit mode, avatar upload

@@ -353,7 +353,7 @@ npm test                     # vitest (58 tests)
 npm start                    # Expo (detects your LAN IP first, see setup guide)
 npm run typecheck            # tsc --noEmit
 npm run lint
-npm test                     # jest / jest-expo (36 tests; needs --forceExit locally)
+npm test                     # jest / jest-expo (39 tests; needs --forceExit locally)
 ```
 
 Backend tests use dedicated databases (`ideaconnect_test`, `…_chataccess`, `…_socketauth`,
