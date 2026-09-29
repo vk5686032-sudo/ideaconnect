@@ -39,6 +39,12 @@ const AUTH_ENDPOINTS = [
   '/auth/forgot-password',
   '/auth/resend-verification',
   '/auth/refresh',
+  // A wrong *current* password is the same situation, and it was missing here.
+  // Without it, mistyping your current password was treated as an expired
+  // access token: the client silently refreshed and re-sent the PUT, and if the
+  // refresh could not be renewed it would have called hardLogout() and signed
+  // the user out of the app for a typo.
+  '/users/change-password',
 ];
 
 // Full session teardown (store + persisted keys).
