@@ -29,7 +29,7 @@ which is the authoritative progress log. This file is the plan of record.
 
 **AC:** App runs in Expo Go on device + emulator; 5 placeholder tabs render; toggling OS dark mode re-themes instantly. **Passed** (Expo Go 57, dark mode OK).
 
-## Phase 1 — Auth & Session 🔴 — ✅ code done · ⏳ device ACs pending
+## Phase 1 — Auth & Session 🟡 — code done · auth-core swept on device · deep links pending
 **Goal:** Full auth lifecycle with secure token storage and silent refresh.
 
 - [x] `services/secureStore.ts` wrappers (get/set/delete for `accessToken`, `refreshToken`)
@@ -39,7 +39,7 @@ which is the authoritative progress log. This file is the plan of record.
 - [x] Expo Router guards: redirect unauthed → `(auth)/login`; authed users skip `(auth)`
 - [x] Logout button → `POST /auth/logout { refreshToken }` → clear storage
 
-**AC:** see [handoff.md](./handoff.md#-phase-1a1b--pending-device-acs-user-test-together) — 9 checks. 5 verified (2 on device, 3 in a browser), 1 test-verified only (#4 reuse), 3 untested (#3 transparent refresh, the `ideaconnect://` deep link which needs an EAS build, and the verify-email link).
+**AC:** see handoff.md — 9 checks. **6 verified** (#1 wrong password, #2 kill+reopen, #3 transparent refresh — all on device; #5 footer nav, #6 register, #7 forgot-password — in a browser). **1 test-verified only** (#4 refresh reuse). **2 untested**, and no longer blocked by tooling: the `ideaconnect://` reset-password link and the verify-email link both need the built APK installed, which now exists but has not been done.
 
 ## Phase 2 — Ideas Feed & Detail — ✅ code done · ✅ ACs swept (browser)
 **Goal:** The core consumption loop: discover → read → interact.
@@ -74,13 +74,15 @@ which is the authoritative progress log. This file is the plan of record.
 - [x] Unread badge on the Home bell, invalidated by the socket `notification` event
 - [x] Push setup: `expo-notifications`, permission prompt, `getDevicePushTokenAsync` → `PUT /users/me/push-tokens`
 - [x] Foreground handler → in-app banner; tap → deep link
-- [ ] Closed-app push delivery — **blocked on an EAS build** (Phase 7)
+- [ ] Closed-app push delivery — **needs the APK installed on a device** (the EAS
+      build exists; it has never been installed — see Phase 7)
 
 **AC:** 8 of 9 verified on the device (real backend, live socket, dark mode). The device
 pass found and fixed a real bug: the in-app notification banner was built on
 `onAction`, which react-native-toast-message v2 renamed to `onPress`, so the
-banner rendered fine and did nothing when tapped. Closed-app delivery is still
-blocked on an EAS build. See handoff.md for the per-AC breakdown.
+banner rendered fine and did nothing when tapped. Closed-app delivery now only
+needs the built APK installed on a device — the build exists but was never
+installed. See handoff.md for the per-AC breakdown.
 
 ## Phase 6 — Profile, Mentors & Settings — ✅ code done · ✅ ACs swept (browser)
 - [x] Own profile tab: stats, skills/interests, edit mode, avatar upload
@@ -90,8 +92,8 @@ blocked on an EAS build. See handoff.md for the per-AC breakdown.
 
 **AC:** 12 checks pending — see handoff.md.
 
-## Phase 7 — Polish & Release Prep 🟡 — error/retry done, rest not started
-- [ ] Loading skeletons for all lists; empty states with illustrations/icons
+## Phase 7 — Polish & Release Prep 🟡 — EAS build done; skeletons done; rest open
+- [x] Loading skeletons for all 9 list loaders; `EmptyState` icons on all 13 call sites
 - [x] Error states with retry — all 7 list screens (ideas, projects, chat,
       notifications, bookmarks, home tasks, both mentor lists) **and** the
       cold-start boot failure, which used to hang on the splash forever: the
@@ -99,9 +101,23 @@ blocked on an EAS build. See handoff.md for the per-AC breakdown.
 - [x] App icon, adaptive icon, splash (indigo brand), name "IdeaConnect"
 - [x] Deep-link scheme `ideaconnect://` declared in `app.json`
 - [x] `ios.bundleIdentifier` / `android.package` set and `eas.json` added with
-      development / preview / production profiles — **never built yet**
-- [ ] First EAS build (validates closed-app push; needs `EXPO_PUBLIC_EAS_PROJECT_ID`)
-- [ ] Performance pass: FlashList where lists are long, image caching audit
+      development / preview / production profiles
+- [x] **First EAS build — DONE.** `@vasanth1104/ideaconnect`, build
+      `3ff40e0b-c569-4a77-899d-58e0ad420629`, universal APK 111.8 MB. Two
+      blockers had to go first: `eas.json` was schema-invalid (a string inside
+      `build`, which the schema reads as a profile), so *every* EAS command
+      refused to run; and `expo-dev-client` is absent, so the `preview` profile
+      was used instead of `development` — a standalone app, which is what
+      closed-app push actually needs. **The APK has never been installed or
+      verified on a device** — the phone was not connected. Deep links and
+      closed-app push are therefore still unverified, not blocked.
+- [ ] Image caching audit — done for chat attachments (`expo-image` +
+      `cachePolicy="memory-disk"`); `Avatar` already used `expo-image`
+- [ ] ~~FlashList~~ — **deliberately skipped.** Not installed, and `FlatList`
+      already virtualises the paginated feeds. Revisit only if jank is actually
+      observed; the dependency is not worth marginal gain.
+- [ ] ~~README/known-issues list~~ — **done**: `known-issues.md` (broken/unverified/deferred, plus
+      the environment traps that keep looking like bugs)
 - [ ] README/docs updated; known-issues list
 
 **AC:** Clean install on a fresh device via EAS build; zero console errors in a 15-minute happy-path walkthrough.

@@ -56,7 +56,9 @@ moderation, and a companion **React Native (Expo)** mobile app.
 ### 📱 Mobile App (Expo / React Native)
 Full parity for the core loop — auth, ideas feed & detail, projects & tasks, realtime chat,
 notifications, profile, mentors, settings. Light/dark theming via NativeWind.
-See [`docs/mobile/`](./docs/mobile/).
+See [`docs/mobile/`](./docs/mobile/) — start with
+[`handoff.md`](./docs/mobile/handoff.md) for what has actually been verified against a running app,
+and [`known-issues.md`](./docs/mobile/known-issues.md) for what is broken or unproven.
 
 ### 🔐 Security
 - Short-lived JWT access tokens (~15 min) with **rotating refresh tokens** (~30 days, hashed
@@ -347,13 +349,13 @@ npm run dev
 npm run build
 npm run preview
 npm run lint                 # oxlint
-npm test                     # vitest (58 tests)
+npm test                     # vitest (65 tests)
 
 # Mobile
 npm start                    # Expo (detects your LAN IP first, see setup guide)
 npm run typecheck            # tsc --noEmit
 npm run lint
-npm test                     # jest / jest-expo (39 tests; needs --forceExit locally)
+npm test                     # jest / jest-expo (43 tests; needs --forceExit locally)
 ```
 
 Backend tests use dedicated databases (`ideaconnect_test`, `…_chataccess`, `…_socketauth`,
