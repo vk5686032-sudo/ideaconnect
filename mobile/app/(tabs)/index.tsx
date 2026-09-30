@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ListTodo } from 'lucide-react-native';
 
 import { Badge } from '@/components/Badge';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
+import { ListSkeleton } from '@/components/Skeleton';
 import { ErrorState } from '@/components/ErrorState';
 import { StatusPickerModal } from '@/components/StatusPickerModal';
 import { projectKeys, useMyTasks, useUpdateTask } from '@/hooks/queries/useProjects';
@@ -68,9 +69,7 @@ export default function HomeScreen() {
         </View>
 
         {myTasks.isLoading ? (
-          <View className="items-center py-10">
-            <ActivityIndicator size="large" color="#6366f1" />
-          </View>
+          <ListSkeleton rows={4} />
         ) : myTasks.isError ? (
           <ErrorState
             title="Couldn't load your tasks"
@@ -83,7 +82,7 @@ export default function HomeScreen() {
             title="No open tasks"
             message={
               myTasks.data?.data.length
-                ? 'All caught up â€” nice work!'
+                ? 'All caught up ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â nice work!'
                 : 'Tasks assigned to you across your projects will appear here.'
             }
           />

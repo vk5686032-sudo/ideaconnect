@@ -15,8 +15,9 @@ import {
   Bookmark,
   ChevronDown,
   ChevronUp,
-  Heart,
-  MessageCircle,
+Heart,
+    LightbulbOff,
+    MessageCircle,
   Send,
   Share2,
   Sparkles,
@@ -392,10 +393,11 @@ export default function IdeaDetailScreen() {
     return (
       <View className="flex-1 justify-center bg-gray-50 dark:bg-[#0b0f19]">
         <Stack.Screen options={{ title: 'Not found' }} />
-        <EmptyState
-          title="Idea unavailable"
-          message="It may have been deleted, or you don't have access to it."
-        />
+<EmptyState
+      icon={LightbulbOff}
+      title="Idea unavailable"
+      message="It may have been deleted, or you don't have access to it."
+    />
         <Button
           title="Go back"
           variant="outline"

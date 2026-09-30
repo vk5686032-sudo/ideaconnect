@@ -13,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Toast from 'react-native-toast-message';
 import { isAxiosError } from 'axios';
+import { LightbulbOff } from 'lucide-react-native';
 
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
@@ -296,10 +297,11 @@ export default function CreateIdeaScreen() {
       ) : editId && (existingQuery.isError || !existingQuery.data?.data) ? (
         <View className="flex-1 justify-center bg-gray-50 dark:bg-[#0b0f19]">
           <Stack.Screen options={{ title: 'Not found' }} />
-          <EmptyState
-            title="Idea unavailable"
-            message="It may have been deleted, or you don't have access to it."
-          />
+<EmptyState
+      icon={LightbulbOff}
+      title="Idea unavailable"
+      message="It may have been deleted, or you don't have access to it."
+    />
         </View>
       ) : (
         <IdeaForm key={editId ?? 'new'} editId={editId} defaults={defaults} />

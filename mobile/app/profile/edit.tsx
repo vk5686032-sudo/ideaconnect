@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { Plus, Trash2, UserX } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import { isAxiosError } from 'axios';
 
@@ -238,7 +238,7 @@ export default function EditProfileScreen() {
     return (
       <View className="flex-1 justify-center bg-gray-50 dark:bg-[#0b0f19]">
         <Stack.Screen options={{ title: 'Edit Profile' }} />
-        <EmptyState title="Not signed in" />
+        <EmptyState icon={UserX} title="Not signed in" />
       </View>
     );
   }

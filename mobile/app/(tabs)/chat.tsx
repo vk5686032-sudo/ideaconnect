@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -13,6 +12,7 @@ import { MessageSquare } from 'lucide-react-native';
 
 import { Avatar } from '@/components/Avatar';
 import { EmptyState } from '@/components/EmptyState';
+import { ListSkeleton } from '@/components/Skeleton';
 import { ErrorState } from '@/components/ErrorState';
 import { useChats } from '@/hooks/queries/useChats';
 import { useCurrentUser } from '@/hooks/useAuth';
@@ -34,10 +34,10 @@ function resolveOtherParticipant(
 }
 
 function previewOf(message: ChatMessage | string | null | undefined): string {
-  if (!message || typeof message === 'string') return 'Say hello ðŸ‘‹';
+  if (!message || typeof message === 'string') return 'Say hello ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹';
   if (message.isDeleted) return 'Message deleted';
   if ((message.attachments?.length ?? 0) > 0 && !message.content) {
-    return 'ðŸ“Ž Attachment';
+    return 'ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€¦Ã‚Â½ Attachment';
   }
   return message.content ?? '';
 }
@@ -159,9 +159,7 @@ export default function ChatScreen() {
         }
         ListEmptyComponent={
           chatsQuery.isLoading ? (
-            <View className="items-center py-16">
-              <ActivityIndicator size="large" color="#6366f1" />
-            </View>
+            <ListSkeleton />
           ) : chatsQuery.isError ? (
             <ErrorState
               title="Couldn't load conversations"

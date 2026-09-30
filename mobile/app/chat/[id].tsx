@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -13,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -84,8 +84,12 @@ function AttachmentView({
     return (
       <Image
         source={{ uri: attachment.url }}
-        className="h-44 w-56 rounded-lg"
-        resizeMode="cover"
+        style={{ height: 176, width: 224, borderRadius: 8 }}
+        contentFit="cover"
+        // Chat scrolls back through the whole history, so without a disk cache
+        // every attachment re-downloads as it re-enters the viewport.
+        cachePolicy="memory-disk"
+        transition={150}
       />
     );
   }

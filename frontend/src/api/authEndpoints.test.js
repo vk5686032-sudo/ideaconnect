@@ -1,73 +1,144 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// The interceptor's whole 401 policy hangs off this list, and it was a bare
-// array with no coverage. A wrong current password was missing from it, which
-// meant a typo was handled as an expired access token: the client refreshed and
-// re-sent the request, and could call hardLogout() and sign the user out.
+// A 401 has two meanings in this app and telling them apart by endpoint is
+// what went wrong before. Listing `/users/change-password` stopped a mistyped
+// current password from triggering a refresh -- but it also stopped a genuinely
+// expired token from ever refreshing, so the form failed with the server's
+// generic "Not authorized to access this route" and there was no way forward.
 //
-// The list is re-declared here rather than imported, because axios.js pulls in
-// the auth store and touches localStorage at module scope. Asserting on a copy
-// still guards the list against someone adding an endpoint in one place only.
+// The rule that replaced it reads the JWT's own `exp`: if our token is still
+// valid, the server is rejecting this request on its merits, so surface its
+// message and touch nothing. If it has expired, refresh like any other 401.
+
 const AUTH_ENDPOINTS = [
   '/auth/login',
   '/auth/register',
   '/auth/forgot-password',
   '/auth/resend-verification',
   '/auth/refresh',
-  '/users/change-password',
 ];
 
 const isAuthRequest = (url) => AUTH_ENDPOINTS.some((e) => url.endsWith(e));
 
-describe('AUTH_ENDPOINTS — 401s that are a user-facing outcome, not an expired session', () => {
-  const expected = [
-    ['/auth/login', 'wrong password on login'],
-    ['/auth/register', 'duplicate or invalid registration'],
-    ['/auth/forgot-password', 'unknown email'],
-    ['/auth/resend-verification', 'unknown email'],
-    ['/auth/refresh', 'expired refresh token'],
-    ['/users/change-password', 'wrong CURRENT password — the case that was missed'],
-  ];
+const b64url = (obj) =>
+  btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-  for (const [url, why] of expected) {
-    it(`exempts ${url} (${why})`, () => {
-      expect(isAuthRequest(url)).toBe(true);
-    });
+const makeToken = (expiresInSeconds) =>
+  `${b64url({ alg: 'HS256' })}.${b64url({ exp: Math.floor(Date.now() / 1000) + expiresInSeconds })}.sig`;
+
+/** Mirror of isAccessTokenExpired in axios.js. */
+const isAccessTokenExpired = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return true;
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return true;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
+        .join('')
+    );
+    const exp = JSON.parse(json).exp;
+    if (!exp) return true;
+    return exp * 1000 <= Date.now() + 5000;
+  } catch {
+    return true;
   }
+};
 
-  it('does NOT exempt ordinary authenticated endpoints', () => {
-    // The whole point: these really do mean the access token expired.
-    for (const url of ['/ideas', '/users/me/stats', '/ideas/abc/comments', '/auth/me']) {
-      expect(isAuthRequest(url)).toBe(false);
+/** Mirror of the interceptor's decision: refresh, or hand the error back. */
+const shouldAttemptRefresh = ({ status, url, token }) => {
+  if (status !== 401) return false;
+  if (isAuthRequest(url)) return false;
+  if (!token) return false;
+  return isAccessTokenExpired();
+};
+
+describe('401 policy: expired session vs. server-rejected request', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('surfaces the server message when our token is still valid', () => {
+    localStorage.setItem('token', makeToken(3600));
+    expect(isAccessTokenExpired()).toBe(false);
+    expect(
+      shouldAttemptRefresh({ status: 401, url: '/users/change-password', token: true })
+    ).toBe(false);
+  });
+
+  it('refreshes when our token has actually expired', () => {
+    localStorage.setItem('token', makeToken(-60));
+    expect(isAccessTokenExpired()).toBe(true);
+    expect(
+      shouldAttemptRefresh({ status: 401, url: '/users/change-password', token: true })
+    ).toBe(true);
+  });
+
+  it('refreshes ordinary endpoints once the token is expired', () => {
+    localStorage.setItem('token', makeToken(-60));
+    expect(shouldAttemptRefresh({ status: 401, url: '/ideas', token: true })).toBe(true);
+  });
+
+  it('never refreshes for the auth endpoints, expired or not', () => {
+    for (const url of AUTH_ENDPOINTS) {
+      localStorage.setItem('token', makeToken(-60));
+      expect(shouldAttemptRefresh({ status: 401, url, token: true }), url).toBe(false);
     }
   });
 
-  it('matches with endsWith, so the paths have to stay distinct', () => {
-    // The real matcher is endsWith, not an exact match. That is fine for this
-    // set — none of these suffixes is shared with a real route — but it does
-    // mean a future route ending in one of these strings would be wrongly
-    // exempted. Asserted here so the caveat is recorded rather than assumed.
-    expect(isAuthRequest('/admin/users/change-password')).toBe(true);
-    expect(isAuthRequest('/api/v1/auth/login')).toBe(true);
+  it('treats a missing or unreadable token as expired', () => {
+    expect(isAccessTokenExpired()).toBe(true); // nothing stored
+    localStorage.setItem('token', 'not-a-jwt');
+    expect(isAccessTokenExpired()).toBe(true);
+  });
+
+  it('treats a token with no exp claim as expired', () => {
+    localStorage.setItem('token', `${b64url({})}.${b64url({ sub: 'x' })}.sig`);
+    expect(isAccessTokenExpired()).toBe(true);
+  });
+
+  it('gives a token a few seconds of slack so one that dies mid-flight still refreshes', () => {
+    localStorage.setItem('token', makeToken(2));
+    expect(isAccessTokenExpired()).toBe(true);
+    localStorage.setItem('token', makeToken(30));
+    expect(isAccessTokenExpired()).toBe(false);
+  });
+
+  it('ignores non-401 statuses entirely', () => {
+    localStorage.setItem('token', makeToken(-60));
+    expect(shouldAttemptRefresh({ status: 403, url: '/ideas', token: true })).toBe(false);
+    expect(shouldAttemptRefresh({ status: 500, url: '/ideas', token: true })).toBe(false);
+  });
+
+  it('does not refresh when there is no refresh token to use', () => {
+    localStorage.setItem('token', makeToken(-60));
+    expect(shouldAttemptRefresh({ status: 401, url: '/ideas', token: false })).toBe(false);
   });
 });
 
-describe('the list cannot drift from the real one', () => {
+describe('the endpoint list stays in sync with axios.js', () => {
   let source;
 
   beforeEach(() => {
-    source = require('node:fs').readFileSync(
-      require.resolve('../api/axios.js'),
-      'utf8'
-    );
+    source = require('node:fs').readFileSync(require.resolve('../api/axios.js'), 'utf8');
   });
-  afterEach(() => vi.restoreAllMocks());
 
   it('matches the endpoints declared in src/api/axios.js', () => {
     const block = source.match(/const AUTH_ENDPOINTS = \[([\s\S]*?)\];/);
     expect(block, 'AUTH_ENDPOINTS should still be a literal array in axios.js').toBeTruthy();
     const inSource = [...block[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
     expect(inSource.sort()).toEqual([...AUTH_ENDPOINTS].sort());
+  });
+
+  it('keeps change-password out of that list', () => {
+    // It belongs to the expiry check now. Leaving it here would re-introduce
+    // the original bug: an expired token could never refresh.
+    expect(AUTH_ENDPOINTS).not.toContain('/users/change-password');
   });
 });

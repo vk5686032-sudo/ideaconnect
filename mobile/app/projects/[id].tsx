@@ -9,11 +9,12 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
-  CheckCircle2,
-  Circle,
-  ExternalLink,
-  Plus,
-} from 'lucide-react-native';
+    CheckCircle2,
+    Circle,
+    ExternalLink,
+    FolderX,
+    Plus,
+  } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import { isAxiosError } from 'axios';
 
@@ -316,10 +317,11 @@ export default function ProjectDetailScreen() {
     return (
       <View className="flex-1 justify-center bg-gray-50 dark:bg-[#0b0f19]">
         <Stack.Screen options={{ title: 'Not found' }} />
-        <EmptyState
-          title="Project unavailable"
-          message="It may have been deleted, or you don't have access to it."
-        />
+<EmptyState
+      icon={FolderX}
+      title="Project unavailable"
+      message="It may have been deleted, or you don't have access to it."
+    />
         <Button
           title="Go back"
           variant="outline"

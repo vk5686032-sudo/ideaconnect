@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import Toast from 'react-native-toast-message';
+import { UserX } from 'lucide-react-native';
 import { isAxiosError } from 'axios';
 
 import { Avatar } from '@/components/Avatar';
@@ -93,7 +94,7 @@ export default function UserProfileScreen() {
     return (
       <View className="flex-1 justify-center bg-gray-50 dark:bg-[#0b0f19]">
         <Stack.Screen options={{ title: 'Profile' }} />
-        <EmptyState title="User not found" />
+        <EmptyState icon={UserX} title="User not found" />
         <Button
           title="Go back"
           variant="outline"

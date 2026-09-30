@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -18,6 +17,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
+import { ListSkeleton } from '@/components/Skeleton';
 import { ErrorState } from '@/components/ErrorState';
 import { Input } from '@/components/Input';
 import { PromptModal } from '@/components/PromptModal';
@@ -121,7 +121,7 @@ export default function MentorsScreen() {
             <Input
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder="Search mentors by name or skillâ€¦"
+              placeholder="Search mentors by name or skillÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦"
               returnKeyType="search"
             />
           </View>
@@ -141,9 +141,7 @@ export default function MentorsScreen() {
             }
             ListEmptyComponent={
               mentorsQuery.isLoading ? (
-                <View className="items-center py-16">
-                  <ActivityIndicator size="large" color="#6366f1" />
-                </View>
+                <ListSkeleton rows={4} />
               ) : mentorsQuery.isError ? (
                 <ErrorState
                   title="Couldn't load mentors"
@@ -197,7 +195,7 @@ export default function MentorsScreen() {
                         <Text
                           numberOfLines={1}
                           className="mt-1 font-sans text-[11px] text-primary-600 dark:text-primary-400">
-                          {item.skills?.slice(0, 4).join(' Â· ')}
+                          {item.skills?.slice(0, 4).join(' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ')}
                         </Text>
                       ) : null}
                     </View>
@@ -206,7 +204,7 @@ export default function MentorsScreen() {
                 <Button
                   title={
                     sendRequest.isPending && requestTarget?._id === item._id
-                      ? 'Sendingâ€¦'
+                      ? 'SendingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦'
                       : 'Request Mentorship'
                   }
                   variant="soft"
@@ -233,9 +231,7 @@ export default function MentorsScreen() {
           }
           ListEmptyComponent={
             requestsQuery.isLoading ? (
-              <View className="items-center py-16">
-                <ActivityIndicator size="large" color="#6366f1" />
-              </View>
+              <ListSkeleton rows={4} />
             ) : requestsQuery.isError ? (
               <ErrorState
                 title="Couldn't load your requests"
@@ -287,7 +283,7 @@ export default function MentorsScreen() {
                       (typeof item.recipient === 'string'
                         ? item.recipient
                         : item.recipient._id)
-                        ? 'Openingâ€¦'
+                        ? 'OpeningÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦'
                         : 'Open Chat'
                     }
                     variant="soft"

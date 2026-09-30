@@ -4,10 +4,6 @@ import useAuthStore from '../store/authSlice';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const getStoredValue = (key) => localStorage.getItem(key) || sessionStorage.getItem(key);
-const setStoredValue = (key, value) => {
-  const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
-  storage.setItem(key, value);
-};
 
 const api = axios.create({
   baseURL: API_URL,
@@ -39,13 +35,45 @@ const AUTH_ENDPOINTS = [
   '/auth/forgot-password',
   '/auth/resend-verification',
   '/auth/refresh',
-  // A wrong *current* password is the same situation, and it was missing here.
-  // Without it, mistyping your current password was treated as an expired
-  // access token: the client silently refreshed and re-sent the PUT, and if the
-  // refresh could not be renewed it would have called hardLogout() and signed
-  // the user out of the app for a typo.
-  '/users/change-password',
 ];
+
+/**
+ * Has our own access token actually expired?
+ *
+ * Needed because "401" means two very different things here. When the token is
+ * still valid, the 401 is the server rejecting *this request* — a wrong
+ * current password, say — and the right move is to surface its message and
+ * touch nothing. When the token has expired, the 401 means the session needs
+ * renewing like any other.
+ *
+ * Skipping refresh purely by endpoint cannot tell those apart: listing
+ * `/users/change-password` stopped a typo from triggering a refresh, but it
+ * also stopped a genuinely expired token from ever refreshing, so the form
+ * just failed with "Not authorized to access this route". Reading the JWT's
+ * own `exp` separates the two without guessing from the URL.
+ */
+const isAccessTokenExpired = () => {
+  const token = getStoredValue('token');
+  if (!token) return true;
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return true;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
+        .join('')
+    );
+    const exp = JSON.parse(json).exp;
+    if (!exp) return true;
+    // 5s of slack so a token that dies mid-flight still refreshes.
+    return exp * 1000 <= Date.now() + 5000;
+  } catch {
+    // Unreadable token: treat as expired and let the refresh path deal with it.
+    return true;
+  }
+};
 
 // Full session teardown (store + persisted keys).
 // logout() clears token/refreshToken from both storages and rewrites the
@@ -73,8 +101,11 @@ const refreshAccessToken = () => {
         if (!data?.token || !data?.refreshToken) {
           throw new Error('Malformed refresh response');
         }
-        setStoredValue('token', data.token);
-        setStoredValue('refreshToken', data.refreshToken);
+        // Update the store too, not just storage. useSocket authenticates the
+        // websocket from the store's token, so writing storage only left the
+        // socket presenting a token that expired 15 minutes after login, and
+        // every realtime feature died silently for the rest of the session.
+        useAuthStore.getState().setTokens(data.token, data.refreshToken);
         if (data.user) {
           useAuthStore.getState().updateUser(data.user);
         }
@@ -101,6 +132,13 @@ api.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401 && !isAuthRequest && !original._retried) {
+      // Our token is still good, so the server rejected this request on its
+      // merits — a wrong current password, most likely. Reject as-is: the
+      // caller shows the real message, and no refresh or logout happens.
+      if (!isAccessTokenExpired()) {
+        return Promise.reject(error);
+      }
+
       original._retried = true;
 
       if (getStoredValue('refreshToken')) {

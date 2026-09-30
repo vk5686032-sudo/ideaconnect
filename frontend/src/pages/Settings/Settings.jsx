@@ -55,7 +55,10 @@ const Settings = () => {
 
   const handleChangePassword = (e) => {
     e.preventDefault();
-    if (passwords.newPassword.length < 6) {
+    // The field label, the server (PASSWORD_MIN) and this check must agree.
+    // This said 6 while both said 8, so a 6- or 7-character password cleared the
+    // form and was then rejected by the server for no visible reason.
+    if (passwords.newPassword.length < 8) {
       setPasswordError('New password must be at least 8 characters');
       return;
     }

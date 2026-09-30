@@ -35,6 +35,26 @@ const useAuthStore = create(
           user: normalizeUser({ ...state.user, ...userData }),
         }));
       },
+
+      /**
+       * Adopt a renewed token pair in BOTH places they are kept.
+       *
+       * The access token lives in two spots: raw in localStorage/sessionStorage
+       * (what the axios interceptor reads) and in this store (what useSocket
+       * reads to authenticate the websocket). The refresh path used to write
+       * only the storage copy, so the two drifted apart the first time a token
+       * was refreshed -- and because the store's copy never changes afterwards,
+       * the socket kept presenting the original token until it expired. Every
+       * realtime feature then died for the rest of the session: chat, typing
+       * indicators, presence and notification toasts, with nothing on screen but
+       * "[socket] connection error: Invalid or expired token" in the console.
+       */
+      setTokens: (token, refreshToken) => {
+        const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+        storage.setItem('token', token);
+        if (refreshToken) storage.setItem('refreshToken', refreshToken);
+        set({ token });
+      },
     }),
     {
       name: 'auth-storage',
