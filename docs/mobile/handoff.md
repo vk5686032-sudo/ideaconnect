@@ -22,33 +22,35 @@ named in it, and nothing else before starting.
 
 **Where things stand:**
 
-- Gate green and **pushed**: backend 69, frontend 65, mobile 43, OpenAPI 117/117, frontend
-  lint/build and mobile typecheck/lint clean. Working tree clean, branch in sync with
-  `origin/main` (`2a36db5`).
-- **The EAS build succeeded** — first one ever. The APK is downloaded and staged, but the
-  phone was **not connected** when the session ended, so it was never installed.
-- A web sweep found and fixed **two real bugs** (see "Sweep findings" below). Both are
-  pushed and tested.
+- Gate green and **pushed**: backend 75, frontend 67, mobile 43, OpenAPI 117/117, frontend
+  lint/build and mobile typecheck/lint clean.
+- **The release build could not talk to the server at all, and this is the single most
+  important finding in this file.** Expo Go had been masking it for the whole project.
+  Android blocks cleartext HTTP in released builds (API 28+), so the installed APK could not
+  reach `http://192.168.0.156:5000` — sign-in and password reset did nothing, silently, with no
+  error shown. `android.usesCleartextTraffic` set in `app.json` is **silently ignored by
+  prebuild**; only the `expo-build-properties` plugin works. See "Sweep findings".
+- **Phase 1b #8 is verified working** on a real installed build: the `ideaconnect://`
+  reset-password deep link routes correctly, with Metro stopped. That was the reason for the
+  EAS build and it is now proven.
+- A web sweep found and fixed **three real bugs** (see "Sweep findings" below). All pushed and
+  tested.
 
-**Do these five things next, in this order:**
+**Do these things next, in this order:**
 
 1. **Reconnect the phone.** Everything device-side is blocked on it. It dropped off three
    times during the last session, so treat a drop as expected, not a surprise.
-2. **Install the staged APK.** It lives in the temp dir and **will not survive a reboot or a
-   Temp cleaner** — if it is gone, rebuild or re-download:
-   - build id `3ff40e0b-c569-4a77-899d-58e0ad420629`, status FINISHED
-   - `cd mobile && eas build:view 3ff40e0b-c569-4a77-899d-58e0ad420629 --json` → `artifacts.buildUrl`
-   - EAS artifact URLs are signed and expire; if the fetch 403s, the build may need re-running.
-   - It is a **universal APK (~112 MB, all ABIs)** because the `preview` profile sets
-     `buildType: apk`. A split-per-ABI build would be a fraction of that.
-3. **Phase 1b #8 and #9** — the `ideaconnect://` reset-password and verify-email deep links.
-   These were the *reason* for the EAS build and are now finally reachable: Expo Go cannot
-   register a custom URL scheme, an installed build can. Trigger with
-   `adb shell am start -a android.intent.action.VIEW -d "ideaconnect://reset-password?token=…"`.
-   A real reset token comes from triggering forgot-password for a seeded user and reading it
-   from the backend console/DB.
+2. **Install the staged APK and confirm it can reach the server.** The cleartext-enabled build
+   is downloaded and staged, but the phone dropped offline *during installation*, so the fix is
+   **built and configured but not yet proven on a device**:
+   - build id `c137a7e0-32be-4fae-97a6-1828847cd67d`, status FINISHED, universal APK ~112 MB
+   - `cd mobile && eas build:list --limit 1 --non-interactive --json` → `artifacts.buildUrl`
+   - EAS artifact URLs are signed and expire; if the fetch 403s, re-run the build.
+   - The decisive test: **sign in with the network reachable.** If the app still cannot reach
+     `:5000`, the cleartext fix is not actually applied and everything else is blocked on that.
+3. **Phase 1b #9** — the verify-email deep link.
 4. **Phase 5 AC 9** — closed-app push on the installed build.
-5. **Finish the two sweeps** (see "Not yet swept" below).
+5. **Finish the mobile sweep.** The web sweep is now complete; mobile has not been started.
 
 **Deliberately not done, and why:**
 
@@ -72,7 +74,7 @@ named in it, and nothing else before starting.
 
 Current state, short version:
 
-- Gate green: **backend 69, frontend 65, mobile 43, OpenAPI 117/117**, plus frontend
+- Gate green: **backend 75, frontend 67, mobile 43, OpenAPI 117/117**, plus frontend
   lint/build and mobile typecheck/lint.
 - Docker builds and has been verified running, not just `compose config`.
 - Swept against a real app: Phase 2, 3 and 6 in the browser; Phase 1a auth-core, the Phase 7
@@ -607,10 +609,23 @@ of `expo-image-picker` — a different package, and it was never a caching bug.
 
 Still open in Phase 7: README/known-issues list, and the FlashList question (deliberately skipped).
 
-## 🔍 Sweep findings — two real bugs, web
+## 🔍 Sweep findings — real bugs, web
 
 A route-by-route sweep with console errors and failed requests captured found more than the
 acceptance criteria did. Both fixes are pushed.
+
+**0. The released app could not reach the server at all — and Expo Go hid it for the whole
+project.** The highest-impact bug found all day, and it is a lesson about the test rig rather
+than the code. Every green result in this project until the first EAS build came from Expo Go, a
+debug client that does not enforce release policies. Android blocks cleartext HTTP in released
+builds (API 28+), so the installed APK could not reach `http://192.168.0.156:5000`: sign-in did
+nothing, password reset did nothing, and **neither surfaced an error**. The first fix attempt was
+wrong and instructive — setting `android.usesCleartextTraffic` in `app.json` was accepted by Expo
+(`expo config --json` showed it) and then **silently ignored by prebuild**. The manifest had no
+cleartext attribute at all. Only `expo-build-properties` works; the generated
+`android/app/src/main/AndroidManifest.xml` now carries `android:usesCleartextTraffic="true"`,
+which is how the fix was verified short of a device. Lesson: when a release-only behaviour is in
+play, confirm the policy landed in the built artefact, not in the config that claims to set it.
 
 **1. The web socket died about 15 minutes into every session.** The highest-impact bug found all
 day. The access token is stored *twice* — raw in `localStorage`/`sessionStorage`, which the axios
@@ -638,20 +653,47 @@ still valid means surface the server's message and touch nothing; token expired 
 usual. Verified live — the toast now reads "Current password is incorrect" and the user stays
 signed in.
 
-**3. Minor:** the new-password form checked `length < 6` while its own message, its field label
+**3. The bookmark button never said it had saved anything.** The write was always correct —
+`/bookmarks` listed the idea and `GET /ideas/my/bookmarks` confirmed it — but the button's label
+was the literal string `Save`, hardcoded in the JSX. Only the background colour followed
+`isBookmarked`, so an already-saved idea read identically to an unsaved one, before *and* after
+a reload. Fixed by rendering `isBookmarked ? 'Saved' : 'Save'` and adding `aria-pressed`, since a
+toggle with no pressed state is invisible to a screen reader. Two render tests, both of which fail
+against the old code.
+
+**4. Minor:** the new-password form checked `length < 6` while its own message, its field label
 and the server's `PASSWORD_MIN` all said 8, so a 6- or 7-character password cleared the form and was
 rejected server-side for no visible reason.
 
-### Two things I chased that turned out not to be bugs
+### Four things I chased that turned out not to be bugs
 
-Recorded so nobody repeats the detour:
+Recorded so nobody repeats the detours. All four were **my sweep's fault, not the app's**, and
+that is the point of writing them down:
 
+- **"The search type tabs do nothing."** They do. The filter is a `<select>`, and my harness was
+  clicking the `<option>` elements, which are not clickable. Driving the select properly gives
+  `all`→2 results, `ideas`→1, `projects`→1, `users`→0.
+- **"`/reset-password` 404s."** The route is `/reset-password/:token`; the bare path 404s by
+  design. With a token it renders and correctly reports mismatch, the 8-character minimum, and
+  "Link Invalid or Expired" for a bad token.
+- **"A team called `bsdgb` proved `POST /chats/group` accepts an empty name."** The user created
+  that team by hand while I was testing. There was no bug and no evidence for one. The missing
+  server-side name validation is real hardening, but it was never a defect in observed behaviour.
+- **`navigator.share` swallowed the clipboard fallback in my sweep.** Headless Chrome rejects with
+  `AbortError`, which the code correctly treats as "user dismissed the sheet". Left alone: fixing
+  a headless artifact would mean adding code for a case the spec does not describe.
 - **`GET /users/me` returns a 500 `CastError`.** There is no `/me` route; the request matches
   `router.get('/:id')` with `id="me"`. Sounds serious, but nothing calls it — the web uses
   `/auth/me`, and every mobile `/users/me*` call is a *two-segment* path (`/me/stats`,
   `/me/push-tokens`) which `/:id` cannot match. Not fixed, because there is nothing to fix.
 - **Stack traces in API responses.** Only `NODE_ENV=development`; the error handler gates it
   correctly. Not a leak in production.
+
+### One feature gap, not a bug
+
+**Message reactions exist on mobile but not on web.** Clicking a web message reveals no reaction
+controls at all. That is a parity gap, not a defect — worth deciding deliberately rather than
+discovering later.
 
 ### The honest caveat
 
@@ -663,18 +705,26 @@ proven or stated as a known limitation rather than assumed fixed.
 
 ## Not yet swept — pick these up
 
-**Web (~40% done).** Every route was loaded with zero console errors, and all 7 admin tabs plus
-mentors were clicked. Still to go, screen by screen:
+**Web: complete.** Every screen below has now been exercised against a live backend. What was
+covered, and what is still genuinely unproven:
 
-- `/chat` and `/teams` — send a message, attachments, reactions, join/leave flows
-- `/profile` — every editor, avatar upload, social links, education/experience add-remove
-- `/ideas/new` and `/projects/new` — validation, tags, tech chips, submit
-- `/search` — filters, empty states, result links
-- idea detail — like, bookmark, share, post comment, delete-own, review flow
-- project detail — milestones, tasks, membership actions
-- `/bookmarks`, `/notifications`
-- auth pages — register, forgot-password, reset, verify-email
-- `/` home and the 404 page
+- `/chat` — room list, open room, send a message (Enter-only; there is no send button), emoji
+  picker, members panel, add member. **Not covered: file attachments** (needs a real file
+  picker) and **Leave team** (destructive, skipped deliberately).
+- `/ideas/new`, `/projects/new` — empty submit is correctly blocked, and a real idea and a real
+  project were created end to end. Technology chips were not individually toggled.
+- `/search` — query works, and the type filter is verified across `all` / `ideas` / `projects` /
+  `users` (2 → 1 → 1 → 0 results). Note the filter is a `<select>`, not a row of tabs.
+- idea detail — like, bookmark, share, post a comment, AI analyze. **Not covered: Edit,
+  Delete, Invite.**
+- `/bookmarks` — confirmed it lists a bookmarked idea, which is what proved the bookmark bug
+  was the label only and never the write.
+- `/notifications` — list, "Mark all as read", and the header badge clearing.
+- auth — `/register` correctly redirects when already signed in; forgot-password and
+  verify-email render; `/reset-password/:token` (note the **`:token`** segment — the bare
+  `/reset-password` 404s by design) correctly reports mismatch, the 8-character minimum, and
+  "Link Invalid or Expired" for a bad token.
+- `/` home and the 404 page.
 
 **Mobile: not started at all.** It needs the phone. Every screen, every button, in dark mode.
 

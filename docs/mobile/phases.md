@@ -108,17 +108,26 @@ installed. See handoff.md for the per-AC breakdown.
       `build`, which the schema reads as a profile), so *every* EAS command
       refused to run; and `expo-dev-client` is absent, so the `preview` profile
       was used instead of `development` — a standalone app, which is what
-      closed-app push actually needs. **The APK has never been installed or
-      verified on a device** — the phone was not connected. Deep links and
-      closed-app push are therefore still unverified, not blocked.
-- [ ] Image caching audit — done for chat attachments (`expo-image` +
+      closed-app push actually needs. **The APK has now been installed, and it
+      exposed a release-only failure that Expo Go had hidden for the entire
+      project: Android blocks cleartext HTTP in released builds, so the installed
+      app could not reach the API at all** — sign-in and reset did nothing, with
+      no error shown. Fixed via the `expo-build-properties` plugin (setting
+      `android.usesCleartextTraffic` in `app.json` is silently ignored by
+      prebuild). The corrected build is downloaded and staged but the phone
+      dropped offline during install, so the fix is **not yet proven on a
+      device**. Phase 1b #8 (reset-password deep link) **is** verified working.
+      Verify-email deep link and closed-app push remain unverified.
+- [x] Image caching audit — done for chat attachments (`expo-image` +
       `cachePolicy="memory-disk"`); `Avatar` already used `expo-image`
 - [ ] ~~FlashList~~ — **deliberately skipped.** Not installed, and `FlatList`
       already virtualises the paginated feeds. Revisit only if jank is actually
       observed; the dependency is not worth marginal gain.
-- [ ] ~~README/known-issues list~~ — **done**: `known-issues.md` (broken/unverified/deferred, plus
+- [x] ~~README/known-issues list~~ — **done**: `known-issues.md` (broken/unverified/deferred, plus
       the environment traps that keep looking like bugs)
-- [ ] README/docs updated; known-issues list
+- [x] README/docs updated; known-issues list — **done**, and re-verified this pass:
+      `handoff.md` and `phases.md` corrected to backend 75 / frontend 67 / mobile 43, the web
+      sweep recorded as **complete**, and the release-build cleartext failure documented
 
 **AC:** Clean install on a fresh device via EAS build; zero console errors in a 15-minute happy-path walkthrough.
 

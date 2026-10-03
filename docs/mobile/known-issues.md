@@ -56,6 +56,14 @@ These are the honest gaps. None has been proven to work; none is known to fail.
 
 Not bugs in the app, but each one looks like one.
 
+- **Expo Go hides release-only failures.** This is the big one. Every result in this project came
+  from Expo Go until the first EAS build, and Expo Go does not enforce release policies — so the
+  app passed everything while being unable to make a single network request in a real build. When
+  a behaviour only appears in a released build, confirm the policy landed in the *artefact*.
+- **`android.usesCleartextTraffic` in `app.json` is silently ignored by prebuild.** Expo accepts
+  the key and `expo config --json` reports it, but the generated manifest has no cleartext
+  attribute. Only the `expo-build-properties` plugin works. Verify with
+  `android/app/src/main/AndroidManifest.xml` after `expo prebuild`.
 - **`ping` from the phone always fails.** The host firewall drops ICMP even when every port is
   open. Test reachability with `adb shell "echo | nc -w 5 <host> 5000"`.
 - **The tab bar only responds to a tap on its label,** not its icon.

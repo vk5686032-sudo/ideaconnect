@@ -427,12 +427,13 @@ const IdeaDetail = () => {
               </button>
               <button
                 onClick={() => bookmarkMutation.mutate()}
+                aria-pressed={!!isBookmarked}
                 className={`flex items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
                   isBookmarked ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 hover:bg-gray-200'
                 }`}
               >
                 <Bookmark className="w-5 h-5" />
-                Save
+                {isBookmarked ? 'Saved' : 'Save'}
               </button>
               <button
                 onClick={handleShare}

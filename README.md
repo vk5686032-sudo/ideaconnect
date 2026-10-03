@@ -341,7 +341,7 @@ npm run seed                 # load demo data (clears DB first)
 npm run seed:dry             # preview seed
 npm run backfill:reputation  # recompute reputation from existing activity
 npm run backfill:verified    # REQUIRED before a production deploy (see Docker below)
-npm test                     # node:test + supertest (69 tests)
+npm test                     # node:test + supertest (75 tests)
 node scripts/verify-openapi.js   # asserts the OpenAPI spec covers every route
 
 # Frontend
@@ -349,7 +349,7 @@ npm run dev
 npm run build
 npm run preview
 npm run lint                 # oxlint
-npm test                     # vitest (65 tests)
+npm test                     # vitest (67 tests)
 
 # Mobile
 npm start                    # Expo (detects your LAN IP first, see setup guide)
