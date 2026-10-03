@@ -17,13 +17,14 @@ If you are picking this up cold, in this order:
 
 ## 📍 Stopped here — pick up from this line
 
-**Last session ended mid-sweep.** The next agent should read this block, then the sections
-named in it, and nothing else before starting.
+**The last session stopped because the phone disconnected mid-install, not because the work ran
+out.** The web sweep is finished. Everything still open needs the phone. The next agent should
+read this block, then the sections named in it, and nothing else before starting.
 
 **Where things stand:**
 
-- Gate green and **pushed**: backend 75, frontend 67, mobile 43, OpenAPI 117/117, frontend
-  lint/build and mobile typecheck/lint clean.
+- Gate green and **pushed** (`493ca03`, in sync with `origin/main`): backend 75, frontend 67,
+  mobile 43, OpenAPI 117/117, frontend lint/build and mobile typecheck/lint clean.
 - **The release build could not talk to the server at all, and this is the single most
   important finding in this file.** Expo Go had been masking it for the whole project.
   Android blocks cleartext HTTP in released builds (API 28+), so the installed APK could not
@@ -33,24 +34,29 @@ named in it, and nothing else before starting.
 - **Phase 1b #8 is verified working** on a real installed build: the `ideaconnect://`
   reset-password deep link routes correctly, with Metro stopped. That was the reason for the
   EAS build and it is now proven.
-- A web sweep found and fixed **three real bugs** (see "Sweep findings" below). All pushed and
-  tested.
+- **The web sweep is complete** — every screen exercised against a live backend. See
+  "Not yet swept" for exactly what is covered and what was deliberately left alone.
+- The web sweep found and fixed **four real bugs** plus the release-build cleartext failure (see
+  "Sweep findings" below). All pushed and tested.
 
 **Do these things next, in this order:**
 
-1. **Reconnect the phone.** Everything device-side is blocked on it. It dropped off three
-   times during the last session, so treat a drop as expected, not a surprise.
-2. **Install the staged APK and confirm it can reach the server.** The cleartext-enabled build
-   is downloaded and staged, but the phone dropped offline *during installation*, so the fix is
-   **built and configured but not yet proven on a device**:
+1. **Reconnect the phone.** Everything device-side is blocked on it. It dropped off several times
+   during the last session — including *during* `adb install` — so treat a drop as expected, not a
+   surprise, and poll with `adb devices` before each action rather than assuming it is there.
+2. **Install the staged APK and confirm it can reach the server.** The cleartext-enabled build is
+   downloaded (`%TEMP%\opencode\ideaconnect3.apk`, ~112 MB) but the phone dropped offline during
+   installation, so the fix is **built and configured but not yet proven on a device**:
    - build id `c137a7e0-32be-4fae-97a6-1828847cd67d`, status FINISHED, universal APK ~112 MB
    - `cd mobile && eas build:list --limit 1 --non-interactive --json` → `artifacts.buildUrl`
    - EAS artifact URLs are signed and expire; if the fetch 403s, re-run the build.
    - The decisive test: **sign in with the network reachable.** If the app still cannot reach
      `:5000`, the cleartext fix is not actually applied and everything else is blocked on that.
+     Verify reachability first with `adb shell "echo | nc -w 5 192.168.0.156 5000"` — `ping` will
+     lie to you.
 3. **Phase 1b #9** — the verify-email deep link.
 4. **Phase 5 AC 9** — closed-app push on the installed build.
-5. **Finish the mobile sweep.** The web sweep is now complete; mobile has not been started.
+5. **The mobile sweep**, which has not been started. Every screen, every button, in dark mode.
 
 **Deliberately not done, and why:**
 
@@ -69,8 +75,12 @@ named in it, and nothing else before starting.
   `scripts/lan-ip.js` on every `npm start`. **If the host's LAN IP changes the built APK stops
   working**, and it needs a rebuild — that is inherent to baking a LAN address into the bundle.
 - ADB: `C:\Users\vk568\AppData\Local\Microsoft\WinGet\Packages\Google.PlatformTools_Microsoft.Winget.Source_8wekyb3d8bbwe\platform-tools\adb.exe`
-- Test data is dirty (roughly 37 notifications, a stray chat message, a canceled-then-restored
-  task). `cd backend && npm run seed` before anything user-facing.
+- Test data is dirty. `cd backend && npm run seed` before anything user-facing. Known artefacts
+  the last session deliberately left behind, so they are not mistaken for seeded data or bugs:
+  ideas `Sweep Test Idea For Validation` and project `Sweep Test Project` (both owned by
+  `admin@ideaconnect.dev`), one comment "Sweep comment for the web sweep.", that idea bookmarked
+  and liked once, James Okafor added as a member of the "Trimmed Team" chat, and a message
+  "Sweep message via Enter". The seeded baseline is roughly 37 notifications.
 
 Current state, short version:
 
@@ -78,9 +88,10 @@ Current state, short version:
   lint/build and mobile typecheck/lint.
 - Docker builds and has been verified running, not just `compose config`.
 - Swept against a real app: Phase 2, 3 and 6 in the browser; Phase 1a auth-core, the Phase 7
-  error/retry work and all of Phase 5 on a device.
-- The `ideaconnect://` deep links and closed-app push are no longer *impossible* — the EAS
-  build exists — they are simply **not yet verified**, because the phone was unavailable.
+  error/retry work and all of Phase 5 on a device; the **entire web surface** in the browser.
+- The `ideaconnect://` reset-password deep link is **verified working** on an installed build.
+  Verify-email and closed-app push are no longer *impossible* — the EAS build exists — they are
+  simply **not yet verified**, because the phone went away.
 
 > **2026-09-27 note (web platform).** The web/backend were audited and fixed in the same session
 > that reconciled this folder. Highlights relevant to mobile: the backend now serves a **complete
@@ -569,7 +580,10 @@ Then, in order:
   importantly a dev client wants a dev server attached — useless for verifying *closed-app* push,
   which needs a standalone app. `preview` is exactly that.
 - Linked: `eas init --id 69ce2881-… --non-interactive --force` → `@vasanth1104/ideaconnect`.
-- Built: build `3ff40e0b-c569-4a77-899d-58e0ad420629`, FINISHED, APK 111.8 MB, downloaded.
+  - Built: build `3ff40e0b-c569-4a77-899d-58e0ad420629`, FINISHED, APK 111.8 MB, downloaded.
+  - **Superseded.** Installing that build revealed the cleartext failure above. The corrected build
+    is `c137a7e0-32be-4fae-97a6-1828847cd67d`, also FINISHED, downloaded to
+    `%TEMP%\opencode\ideaconnect3.apk`. The phone disconnected during its install.
 
 Both `development` and `preview` now carry the LAN API URL explicitly
 (`http://192.168.0.156:5000/api/v1`) because `EXPO_PUBLIC_*` are inlined at build time.
@@ -727,6 +741,21 @@ covered, and what is still genuinely unproven:
 - `/` home and the 404 page.
 
 **Mobile: not started at all.** It needs the phone. Every screen, every button, in dark mode.
+
+Scope for whoever picks this up — mirror the web list above so the two stay comparable:
+
+- **Auth** — register, login, forgot-password, reset, verify-email, and the token-expiry path.
+- **Chat** — room list, send, attachments, reactions, members, add/remove member.
+- **Ideas** — list, filters, detail, like, bookmark, comment, create, edit, delete.
+- **Projects** — list, detail, milestones, tasks, membership, create, edit, delete.
+- **Profile** — every editor, avatar upload, social links, education/experience add-remove.
+- **Notifications** — badge, tap-through deep linking, mark read, mark all read.
+- **Search**, **bookmarks**, **mentors**, **admin**, **settings**, **home**, **error/empty states**.
+
+Two things worth checking early, because both are release-only and neither can be seen in Expo Go:
+that the app can reach the API at all (the cleartext issue), and that push arrives with the app
+closed. If sign-in does nothing, stop and fix that before sweeping anything else — every other
+result will be meaningless.
 
 ## ✅ Phase 6 — swept in the browser
 

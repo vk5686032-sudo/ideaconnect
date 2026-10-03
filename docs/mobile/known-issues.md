@@ -11,12 +11,13 @@ a real app, see [handoff.md](./handoff.md).
 
 These are the honest gaps. None has been proven to work; none is known to fail.
 
-- **Closed-app push (Phase 5 AC 9).** Needs the EAS-built APK installed on a device. The build
-  succeeded (`3ff40e0b-c569-4a77-899d-58e0ad420629`) but was never installed — the phone was not
-  connected. Everything in-app is verified and working.
-- **`ideaconnect://` deep links (Phase 1b #8 and #9).** Reset-password and verify-email. Same
-  reason. Expo Go cannot register a custom URL scheme, so these were unreachable until an installed
-  build existed; one does now.
+- **Closed-app push (Phase 5 AC 9).** Needs the EAS-built APK installed on a device. An APK *was*
+  installed, and immediately exposed the cleartext failure below — but the phone disconnected
+  during the install of the corrected build (`c137a7e0`), so push has never been tested on an app
+  that can reach the API. Everything in-app is verified and working.
+- **`ideaconnect://` deep links (Phase 1b #8 and #9).** #8, reset-password, is **verified working**
+  on an installed build with Metro stopped. #9, verify-email, is not — same blocker as push.
+  Expo Go cannot register a custom URL scheme, which is why this needed an APK at all.
 - **Web socket recovery after a long idle.** The root cause is fixed (see handoff, "Sweep
   findings") and a normal session connects cleanly. But a simulated "returning user with an expired
   token" still ended with the socket down in testing. The tokens re-synced correctly; the socket

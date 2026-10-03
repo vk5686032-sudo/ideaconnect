@@ -74,8 +74,10 @@ which is the authoritative progress log. This file is the plan of record.
 - [x] Unread badge on the Home bell, invalidated by the socket `notification` event
 - [x] Push setup: `expo-notifications`, permission prompt, `getDevicePushTokenAsync` → `PUT /users/me/push-tokens`
 - [x] Foreground handler → in-app banner; tap → deep link
-- [ ] Closed-app push delivery — **needs the APK installed on a device** (the EAS
-      build exists; it has never been installed — see Phase 7)
+- [ ] Closed-app push delivery — **needs an APK that can reach the API installed on a device**.
+      The EAS build exists and the first one installed cleanly, but it could not make a single
+      network request (cleartext), and the phone disconnected during the install of the corrected
+      build — see Phase 7
 
 **AC:** 8 of 9 verified on the device (real backend, live socket, dark mode). The device
 pass found and fixed a real bug: the in-app notification banner was built on
@@ -114,10 +116,11 @@ installed. See handoff.md for the per-AC breakdown.
       app could not reach the API at all** — sign-in and reset did nothing, with
       no error shown. Fixed via the `expo-build-properties` plugin (setting
       `android.usesCleartextTraffic` in `app.json` is silently ignored by
-      prebuild). The corrected build is downloaded and staged but the phone
-      dropped offline during install, so the fix is **not yet proven on a
-      device**. Phase 1b #8 (reset-password deep link) **is** verified working.
-      Verify-email deep link and closed-app push remain unverified.
+      prebuild). The corrected build `c137a7e0-32be-4fae-97a6-1828847cd67d` is
+      downloaded and staged but the phone dropped offline during install, so the
+      fix is **not yet proven on a device**. Phase 1b #8 (reset-password deep
+      link) **is** verified working. Verify-email deep link and closed-app push
+      remain unverified.
 - [x] Image caching audit — done for chat attachments (`expo-image` +
       `cachePolicy="memory-disk"`); `Avatar` already used `expo-image`
 - [ ] ~~FlashList~~ — **deliberately skipped.** Not installed, and `FlatList`
