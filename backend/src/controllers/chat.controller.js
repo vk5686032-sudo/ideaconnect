@@ -38,17 +38,28 @@ exports.createGroupChat = async (req, res, next) => {
   try {
     const { name, description, members, projectId } = req.body;
 
+    // A group chat is only meaningful if it has a name, and the web form's own
+    // guard is the only thing standing behind this. `name` is optional on the
+    // model, so a nameless POST used to succeed and produce an unnameable team
+    // -- one reached during the sweep -- and any other API client could do the
+    // same. This is the only chat write with no validation, so it is checked
+    // here rather than by pulling the whole router onto zod for one field.
+    if (!name || !String(name).trim()) {
+      return errorResponse(res, 400, 'Team name is required');
+    }
+
     const allMembers = [req.user._id, ...(members || [])];
 
     const chat = await Chat.create({
       type: 'group',
-      name,
+      name: String(name).trim(),
       description,
       participants: allMembers,
       admins: [req.user._id],
       creator: req.user._id,
       relatedProject: projectId || null,
     });
+
 
     await chat.populate('participants', 'name avatar');
     await chat.populate('admins', 'name avatar');
