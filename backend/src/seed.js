@@ -77,18 +77,7 @@ const IDEAS = [
     requiredSkills: ['React Native', 'Node.js', 'Image Recognition'],
     status: 'open',
     visibility: 'public',
-    aiAnalysis: {
-      suggestions: [
-        'Add QR-code item tags for instant matching',
-        'Partner with campus security for verified drop-off points',
-      ],
-      challenges: ['User adoption on a new campus', 'Photo spam moderation'],
-      recommendedTechnologies: ['React Native', 'TensorFlow.js', 'Cloudinary'],
-      analyzedAt: new Date(),
     },
-    feasibilityScore: 82,
-    innovationScore: 65,
-  },
   {
     title: 'GreenRoute — Carbon-Aware Navigation',
     description:
@@ -98,18 +87,7 @@ const IDEAS = [
     requiredSkills: ['React', 'Python', 'Mapbox API', 'Data Visualization'],
     status: 'in-progress',
     visibility: 'public',
-    aiAnalysis: {
-      suggestions: [
-        'Integrate real-time transit API data',
-        'Add gamification with weekly carbon savings leaderboard',
-      ],
-      challenges: ['Accurate carbon models per vehicle type', 'Real-time transit data availability'],
-      recommendedTechnologies: ['React', 'Mapbox GL', 'Python', 'FastAPI'],
-      analyzedAt: new Date(),
     },
-    feasibilityScore: 74,
-    innovationScore: 78,
-  },
   {
     title: 'MediMatch — AI Symptom Checker with Local Doctor Routing',
     description:
@@ -119,15 +97,7 @@ const IDEAS = [
     requiredSkills: ['Python', 'React', 'NLP', 'FastAPI'],
     status: 'open',
     visibility: 'public',
-    aiAnalysis: {
-      suggestions: ['Partner with local hospitals for verified data', 'Add teleconsultation booking'],
-      challenges: ['Regulatory compliance', 'Ensuring AI accuracy for medical advice'],
-      recommendedTechnologies: ['React', 'FastAPI', 'OpenAI', 'PostgreSQL'],
-      analyzedAt: new Date(),
     },
-    feasibilityScore: 58,
-    innovationScore: 85,
-  },
   {
     title: 'SkillSwap — Peer Skill Exchange Marketplace',
     description:
@@ -137,8 +107,6 @@ const IDEAS = [
     requiredSkills: ['React', 'Node.js', 'MongoDB'],
     status: 'open',
     visibility: 'public',
-    feasibilityScore: 90,
-    innovationScore: 72,
   },
   {
     title: 'FocusHive — Pomodoro with Friends',
@@ -149,8 +117,6 @@ const IDEAS = [
     requiredSkills: ['React', 'Socket.io', 'Tailwind CSS'],
     status: 'draft',
     visibility: 'public',
-    feasibilityScore: 88,
-    innovationScore: 60,
   },
   {
     title: 'CodeReview Buddy — AI-Powered PR Reviews',
@@ -161,8 +127,6 @@ const IDEAS = [
     requiredSkills: ['TypeScript', 'GitHub API', 'Node.js', 'OpenAI'],
     status: 'open',
     visibility: 'public',
-    feasibilityScore: 75,
-    innovationScore: 70,
   },
 ];
 

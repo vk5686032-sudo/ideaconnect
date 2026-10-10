@@ -64,7 +64,7 @@ test('POST /api/auth/register creates a user', async () => {
   assert.strictEqual(res.body.data.user.email, 'test@test.com');
 });
 
-test('POST /api/auth/register rejects duplicate email', async () => {
+test('POST /api/auth/register returns generic message on duplicate email (no enumeration)', async () => {
   await request.post('/api/auth/register').send({
     name: 'First',
     email: 'dup@test.com',
@@ -77,8 +77,11 @@ test('POST /api/auth/register rejects duplicate email', async () => {
     password: 'password123',
   });
 
-  assert.strictEqual(res.status, 400);
-  assert.strictEqual(res.body.success, false);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.strictEqual(res.body.message, 'If an account exists for that email, a verification link has been sent.');
+  // On duplicate, we re-send verification email but don't return a token (user already has one)
+  assert.strictEqual(res.body.data, null);
 });
 
 test('POST /api/auth/login succeeds with valid credentials', async () => {

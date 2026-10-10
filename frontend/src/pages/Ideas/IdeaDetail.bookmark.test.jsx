@@ -27,10 +27,6 @@ vi.mock('../../api/idea.api', () => ({
   },
 }));
 
-vi.mock('../../api/ai.api', () => ({
-  default: { getSimilarIdeas: vi.fn(), suggestTeammates: vi.fn(), analyzeIdea: vi.fn() },
-}));
-
 vi.mock('../../api/user.api', () => ({ default: { getAll: vi.fn() } }));
 vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn() } }));
 

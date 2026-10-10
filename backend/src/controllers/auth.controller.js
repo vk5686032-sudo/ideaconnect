@@ -68,10 +68,24 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user exists
+    // Same wording in every branch — avoids email enumeration.
+    const generic = 'If an account exists for that email, a verification link has been sent.';
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return errorResponse(res, 400, 'Email already registered');
+      // Re-send verification email if not verified
+      if (!existingUser.isVerified) {
+        const verificationToken = generateVerificationToken();
+        existingUser.verificationToken = verificationToken;
+        existingUser.verificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+        await existingUser.save();
+        try {
+          await emailService.sendVerificationEmail(email, verificationToken, existingUser.name);
+        } catch (emailError) {
+          console.error('Email error:', emailError);
+        }
+      }
+      return successResponse(res, 200, generic);
     }
 
     // Create user
@@ -101,7 +115,7 @@ exports.register = async (req, res, next) => {
     successResponse(
       res,
       201,
-      'Registration successful. Please check your email for verification.',
+      generic,
       buildAuthPayload(user, token, refreshToken)
     );
   } catch (error) {

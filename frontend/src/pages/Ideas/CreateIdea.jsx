@@ -4,11 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, Loader2, X, Save } from 'lucide-react';
+import { Loader2, X, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BackButton from '../../components/common/BackButton';
 import ideaApi from '../../api/idea.api';
-import aiApi from '../../api/ai.api';
 import { CATEGORIES, COMMON_SKILLS, VISIBILITY_OPTIONS } from '../../utils/constants';
 
 const ideaSchema = z.object({
@@ -63,24 +62,6 @@ const CreateIdea = () => {
     },
   });
 
-  const improveTitleMutation = useMutation({
-    mutationFn: (data) => aiApi.improveTitle(data),
-    onSuccess: (response) => {
-      toast.success('AI title suggestions ready');
-      setTitleSuggestions(response.data.data);
-    },
-  });
-
-  const improveDescriptionMutation = useMutation({
-    mutationFn: (data) => aiApi.improveDescription(data),
-    onSuccess: (response) => {
-      setValue('description', response.data.data.improvedDescription || response.data.data);
-      toast.success('Description improved by AI');
-    },
-  });
-
-  const [titleSuggestions, setTitleSuggestions] = useState([]);
-
   const addSkill = () => {
     if (skillInput.trim() && !skills.includes(skillInput.trim())) {
       setSkills([...skills, skillInput.trim()]);
@@ -116,30 +97,6 @@ const CreateIdea = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
           <input {...register('title')} className="input-field" placeholder="Give your idea a catchy title" />
           {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>}
-          <button
-            type="button"
-            onClick={() => improveTitleMutation.mutate({
-              title: getValues('title') || '',
-              description: getValues('description') || '',
-            })}
-            className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-          >
-            <Sparkles className="w-4 h-4" /> Get AI suggestions
-          </button>
-          {titleSuggestions.length > 0 && (
-            <div className="mt-2 space-y-2">
-              {titleSuggestions.map((suggestion, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setValue('title', suggestion)}
-                  className="block w-full text-left px-3 py-2 bg-gray-50 hover:bg-primary-50 rounded-lg text-sm"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Description */}
@@ -152,16 +109,6 @@ const CreateIdea = () => {
             placeholder="Describe your idea in detail - what problem does it solve, how does it work, who is it for?"
           />
           {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
-          <button
-            type="button"
-            onClick={() => improveDescriptionMutation.mutate({
-              title: document.querySelector('[name="title"]')?.value || '',
-              description: document.querySelector('[name="description"]')?.value || '',
-            })}
-            className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-          >
-            <Sparkles className="w-4 h-4" /> Improve with AI
-          </button>
         </div>
 
         {/* Category */}

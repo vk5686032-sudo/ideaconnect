@@ -3,7 +3,23 @@ const User = require('../models/User');
 const Idea = require('../models/Idea');
 const config = require('../config/env');
 
+// A placeholder key is worse than no key: it reaches OpenAI, gets rejected, and used to
+// be swallowed by a mock fallback that answered 200 with invented scores. Fail here
+// instead, so an unprovisioned environment is loud rather than quietly fictional.
+// Mirrors the placeholder check in services/email.service.js.
+const isPlaceholderKey = (v) =>
+  !v || /^your-|^sk-|^change-|placeholder/i.test(String(v));
+
+const aiConfigured = () =>
+  config.ai.openaiKey && !isPlaceholderKey(config.ai.openaiKey);
+
 const callOpenAI = async (prompt) => {
+  if (!aiConfigured()) {
+    throw Object.assign(
+      new Error('AI provider is not configured'),
+      { statusCode: 503, code: 'AI_NOT_CONFIGURED' }
+    );
+  }
   try {
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -51,27 +67,8 @@ Respond in JSON format:
   "technologies": ["tech1", "tech2", ...]
 }`;
 
-  try {
-    const response = await callOpenAI(prompt);
-    return JSON.parse(response);
-  } catch (error) {
-    // Return mock data if AI is unavailable
-    return {
-      feasibilityScore: 75,
-      innovationScore: 70,
-      suggestions: [
-        'Consider adding a unique value proposition',
-        'Define clear success metrics',
-        'Research existing solutions in the market',
-      ],
-      challenges: [
-        'Market competition',
-        'Technical complexity',
-        'Resource requirements',
-      ],
-      technologies: ['React', 'Node.js', 'MongoDB', 'Express', 'Tailwind CSS'],
-    };
-  }
+  const response = await callOpenAI(prompt);
+  return JSON.parse(response);
 };
 
 const findSimilarIdeas = async (idea) => {

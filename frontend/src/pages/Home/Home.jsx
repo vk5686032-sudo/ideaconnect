@@ -23,9 +23,8 @@ const Home = () => {
               </span>
             </h1>
             <p className="text-lg md:text-xl text-primary-100 max-w-3xl mx-auto mb-8">
-              An AI-powered collaborative innovation platform where ideas evolve into successful
-              projects. Connect with like-minded innovators, get AI recommendations, and build
-              amazing things together.
+              A collaborative innovation platform where ideas evolve into successful projects.
+              Connect with like-minded innovators, get smart recommendations, and build amazing things together.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register" className="btn-primary bg-white text-primary-600 hover:bg-gray-100">
@@ -50,32 +49,32 @@ const Home = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: Lightbulb,
-                title: 'Share Ideas',
-                description:
-                  'Post your innovative ideas and get feedback from the community. Use our AI to refine your concepts.',
-              },
-              {
-                icon: Users,
-                title: 'Find Teammates',
-                description:
-                  'Connect with skilled individuals who share your passion. AI-powered matching finds the perfect collaborators.',
-              },
-              {
-                icon: Sparkles,
-                title: 'AI Assistance',
-                description:
-                  'Get intelligent recommendations, feasibility scores, and suggestions to improve your ideas.',
-              },
-              {
-                icon: Rocket,
-                title: 'Build Projects',
-                description:
-                  'Transform ideas into projects with task management, milestones, and collaboration tools.',
-              },
-            ].map((feature, index) => (
+{[
+                {
+                  icon: Lightbulb,
+                  title: 'Share Ideas',
+                  description:
+                    'Post your innovative ideas and get feedback from the community. Refine your concepts with smart suggestions.',
+                },
+                {
+                  icon: Users,
+                  title: 'Find Teammates',
+                  description:
+                    'Connect with skilled individuals who share your passion. Skill-based matching finds the right collaborators.',
+                },
+                {
+                  icon: Sparkles,
+                  title: 'Smart Assistance',
+                  description:
+                    'Get intelligent recommendations, feasibility scores, and suggestions to improve your ideas.',
+                },
+                {
+                  icon: Rocket,
+                  title: 'Build Projects',
+                  description:
+                    'Transform ideas into projects with task management, milestones, and collaboration tools.',
+                },
+              ].map((feature, index) => (
               <div key={index} className="card-hover text-center">
                 <div className="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
                   <feature.icon className="w-7 h-7 text-primary-600" />

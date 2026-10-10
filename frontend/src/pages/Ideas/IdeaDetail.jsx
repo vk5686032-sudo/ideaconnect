@@ -1171,4 +1171,4 @@ const InviteUserModal = ({ excludeIds = [], onClose, onPick, isSubmitting }) => 
   );
 };
 
-export default IdeaDetail;
+export default IdeaDetail;
