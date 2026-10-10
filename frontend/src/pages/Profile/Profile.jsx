@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { User, Calendar, Globe, Edit2, Save, X, MessageSquare, Loader2, GraduationCap, Briefcase, Trash2, Flag, Settings } from 'lucide-react';
 import { GithubIcon, LinkedinIcon } from '../../components/common/BrandIcons';
 import BackButton from '../../components/common/BackButton';

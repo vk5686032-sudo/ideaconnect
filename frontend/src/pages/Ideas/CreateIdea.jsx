@@ -38,7 +38,7 @@ const CreateIdea = () => {
 
   const existingIdea = existingData?.data?.data;
 
-  const { register, handleSubmit, setValue, getValues, formState: { errors } } = useForm({
+  const { register, handleSubmit, _setValue, _getValues, formState: { errors } } = useForm({
     resolver: zodResolver(ideaSchema),
     defaultValues: {
       title: existingIdea?.title || '',
